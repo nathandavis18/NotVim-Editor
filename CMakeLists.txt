@@ -6,30 +6,20 @@ cmake_minimum_required (VERSION 3.8)
 project ("TextEditor")
 
 set(SOURCES
-	lib/imgui/imgui.cpp
-	lib/imgui/imgui_impl_glfw.cpp
-	lib/imgui/imgui_impl_opengl3.cpp
-	lib/imgui/imgui_draw.cpp
-	lib/imgui/imgui_tables.cpp
-	lib/imgui/imgui_widgets.cpp
 	src/TextEditor.cpp
+	src/File/File.cpp
+	src/SyntaxHighlight/SyntaxHighlight.cpp
+	src/main.cpp
 )
 
 set (HEADERS
-	lib/imgui/imconfig.h
-	lib/imgui/imgui_impl_opengl3_loader.h
-	lib/imgui/imgui_internal.h
-	lib/imgui/imgui.h
-	lib/imgui/imgui_impl_glfw.h
-	lib/imgui/imgui_impl_opengl3.h
-	lib/imgui/imstb_rectpack.h
-	lib/imgui/imstb_textedit.h
-	lib/imgui/imstb_truetype.h
 	src/TextEditor.hpp
+	src/File/File.hpp
+	src/SyntaxHighlight/SyntaxHighlight.hpp
 )
-find_package(OpenGL REQUIRED)
+#find_package(OpenGL REQUIRED)
 
-find_package(GLFW)
+#[[find_package(GLFW)
 if(NOT GLFW_FOUND)
 	include(FetchContent)
 	FetchContent_Declare(
@@ -40,11 +30,11 @@ if(NOT GLFW_FOUND)
 
 	FetchContent_MakeAvailable(glfw)
 endif(NOT GLFW_FOUND)
-
+]]
 # Add source to this project's executable.
 add_executable (TextEditor ${SOURCES} ${HEADERS})
-target_link_libraries(TextEditor PRIVATE glfw OpenGL::GL)
-target_include_directories(TextEditor PRIVATE lib/imgui)
+#target_link_libraries(TextEditor PRIVATE glfw OpenGL::GL)
+#target_include_directories(TextEditor PRIVATE lib/imgui)
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET TextEditor PROPERTY CXX_STANDARD 20)

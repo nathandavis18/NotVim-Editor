@@ -1,14 +1,36 @@
 ﻿#pragma once
-
 #include <iostream>
-#include <memory>
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
-#define GL_SILENCE_DEPRECATION
-#if defined(IMGUI_IMPL_OPENGL_ES2)
-	#include <GLES2/gl2.h>
-#endif
-#include <GLFW/glfw3.h>
+#include "File/File.hpp"
+#include "SyntaxHighlight/SyntaxHighlight.hpp"
 
-static void glfw_error_callback(const int error, const char* description);
+namespace Editor
+{
+	enum class KeyAction
+	{
+		KeyNull,
+		CtrlC,
+		CtrlF,
+		CtrlX,
+		CtrlV,
+		Tab,
+		Enter,
+		CtrlS,
+		Esc,
+		Backspace,
+		Delete,
+
+		ArrowLeft,
+		ArrowRight,
+		ArrowUp,
+		ArrowDown,
+		Home,
+		End,
+		PageUp,
+		PageDown
+	};
+
+	int editorReadKey(int fileDescriptor);
+	bool getCursorPosition(int* rows, int* cols);
+	bool isSeparator(char c);
+	bool rowHasOpenComment(File::FileRow* row);
+}
