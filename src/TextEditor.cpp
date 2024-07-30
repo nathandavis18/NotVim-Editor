@@ -2,19 +2,25 @@
 #include <iostream>
 namespace Editor
 {
-	std::vector<Row> rows;
+	std::vector<Row> rowContents;
+
+	std::vector<Row>& rows()
+	{
+		return rowContents;
+	}
+
 	void loadRows()
 	{
 		size_t lineBreak = 0;
 		while ((lineBreak = File::contents().find('\n')) != std::string::npos)
 		{
-			rows.emplace_back(File::contents().substr(0, lineBreak), false);
+			rowContents.emplace_back(File::contents().substr(0, lineBreak), File::contents().substr(0, lineBreak), lineBreak);
 			File::contents().erase(File::contents().begin(), File::contents().begin() + lineBreak + 1);
 		}
-		rows.emplace_back(File::contents().substr(0, File::contents().length()), false);
+		rowContents.emplace_back(File::contents().substr(0, File::contents().length()), File::contents().substr(0, lineBreak), File::contents().length());
 		File::contents().clear();
 
-		for (const auto& row : rows)
+		for (const auto& row : rowContents)
 		{
 			std::cout << row.line << std::endl;
 		}

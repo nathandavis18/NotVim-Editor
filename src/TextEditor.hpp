@@ -33,8 +33,10 @@ namespace Editor
 	struct Row
 	{
 		std::string line;
-		bool dirty;
+		std::string renderedLine;
+		size_t renderedSize;
 	};
+	std::vector<Row>& rows();
 	void loadRows();
 	void getCommand();
 }

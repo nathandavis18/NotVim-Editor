@@ -13,7 +13,7 @@ namespace SyntaxHighlight{
 	void addSyntax(const std::vector<std::string>& filetypes, const std::vector<std::string>& keywords, const std::string& singlelineComment,
 		const std::string& multilineCommentStart, const std::string& multilineCommentEnd);
 
-	std::vector<EditorSyntax>& getSyntax();
+	std::vector<EditorSyntax>& syntax();
 
 	void initSyntax();
 
@@ -33,5 +33,4 @@ namespace SyntaxHighlight{
 	{
 		int r, g, b;
 	};
-	static std::vector<EditorSyntax> syntax;
 }
