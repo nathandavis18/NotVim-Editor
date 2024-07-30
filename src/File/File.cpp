@@ -1,25 +1,37 @@
 #include "File.hpp"
+#include <filesystem>
+#include <fstream>
+
 namespace File
 {
-	EditorConfig::EditorConfig() : cursorX(0), cursorY(0), rowOffset(0), colOffset(0), screenRows(0), screenCols(0),
-		numRows(0), rawMode(false), notSaved(true), row(nullptr), syntax(nullptr)
-	{}
-	void disableRawMode(int fileDescriptor)
-	{
-		if (editor.rawMode)
-		{
-			editor.rawMode = false;
-		}
-	}
-	bool enableRawMode(int fileDescriptor)
-	{
-		if (editor.rawMode) return true;
-		if (fileDescriptor != _fileno(stdin)) return false;
-		atexit(updateEditorOnExit);
+	std::string fileName = "";
+	std::string fileContents = "";
 
-	}
-	void updateEditorOnExit()
+	void setFileName(std::string_view name)
 	{
-		disableRawMode(_fileno(stdin));
+		fileName = name;
+	}
+	void loadFileContents()
+	{
+		std::filesystem::path path = std::filesystem::current_path() / fileName;
+		std::ifstream file(path);
+		std::stringstream ss;
+		ss << file.rdbuf();
+		file.close();
+
+		fileContents = ss.str();
+	}
+
+	std::string& contents()
+	{
+		return fileContents;
+	}
+
+	void saveFile(std::string_view newContents)
+	{
+		std::filesystem::path path = std::filesystem::current_path() / fileName;
+		std::ofstream file(path);
+		file << newContents;
+		file.close();
 	}
 }

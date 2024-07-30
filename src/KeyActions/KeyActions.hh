@@ -1,3 +1,4 @@
+#pragma once
 namespace KeyActions
 {
 	enum class KeyAction

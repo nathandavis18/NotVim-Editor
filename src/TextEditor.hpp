@@ -1,7 +1,8 @@
 ﻿#pragma once
-#include <iostream>
 #include "File/File.hpp"
 #include "SyntaxHighlight/SyntaxHighlight.hpp"
+
+#include <string>
 
 namespace Editor
 {
@@ -29,8 +30,11 @@ namespace Editor
 		PageDown
 	};
 
-	int editorReadKey(int fileDescriptor);
-	bool getCursorPosition(int* rows, int* cols);
-	bool isSeparator(char c);
-	bool rowHasOpenComment(File::FileRow* row);
+	struct Row
+	{
+		std::string line;
+		bool dirty;
+	};
+	void loadRows();
+	void getCommand();
 }

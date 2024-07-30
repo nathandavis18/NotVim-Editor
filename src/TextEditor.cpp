@@ -1,31 +1,56 @@
 ﻿#include "TextEditor.hpp"
-#include <string>
+#include <iostream>
 namespace Editor
 {
-	int editorReadKey(int fileDescriptor)
+	std::vector<Row> rows;
+	void loadRows()
 	{
-		while (std::cin)
+		size_t lineBreak = 0;
+		while ((lineBreak = File::contents().find('\n')) != std::string::npos)
 		{
-			return 0;
+			rows.emplace_back(File::contents().substr(0, lineBreak), false);
+			File::contents().erase(File::contents().begin(), File::contents().begin() + lineBreak + 1);
+		}
+		rows.emplace_back(File::contents().substr(0, File::contents().length()), false);
+		File::contents().clear();
+
+		for (const auto& row : rows)
+		{
+			std::cout << row.line << std::endl;
 		}
 	}
-
-	bool getCursorPosition(int* rows, int* cols)
+	void getCommand()
 	{
-		return true;
-	}
-
-	bool isSeparator(char c)
-	{
-		return c == '\0' || std::isspace(c) || (std::strchr(",.()+-/*=~[];", c) != 0);
-	}
-
-	bool rowHasOpenComment(File::FileRow* row)
-	{
-		using HT = SyntaxHighlight::HighlightType;
-		if (row->highlight && row->renderedSize && row->highlight[row->renderedSize - 1] == static_cast<int>(HT::MultilineComment) &&
-			(row->renderedSize < 2 || (row->render[row->renderedSize - 2] != '*' || row->render[row->renderedSize - 1] != '/'))) 
-			return true;
-		return false;
+		std::string newContents;
+		while (std::cin)
+		{
+			std::string str;
+			std::getline(std::cin, str);
+			if (str == "q")
+			{
+				break;
+			}
+			else if (str == "s")
+			{
+				File::saveFile(newContents);
+			}
+			else if (str == "sq")
+			{
+				File::saveFile(newContents);
+				break;
+			}
+			else if (str == "i")
+			{
+				std::getline(std::cin, newContents);
+			}
+			else if (str == "p")
+			{
+				std::cout << newContents << std::endl;
+			}
+			else
+			{
+				std::cout << str << std::endl;
+			}
+		}
 	}
 }

@@ -15,6 +15,8 @@ namespace SyntaxHighlight{
 
 	std::vector<EditorSyntax>& getSyntax();
 
+	void initSyntax();
+
 	enum class HighlightType
 	{
 		Normal,
@@ -31,6 +33,5 @@ namespace SyntaxHighlight{
 	{
 		int r, g, b;
 	};
-
 	static std::vector<EditorSyntax> syntax;
 }
