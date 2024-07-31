@@ -19,11 +19,6 @@ namespace Editor
 		}
 		rowContents.emplace_back(File::contents().substr(0, File::contents().length()), File::contents().substr(0, lineBreak), File::contents().length());
 		File::contents().clear();
-
-		for (const auto& row : rowContents)
-		{
-			std::cout << row.line << std::endl;
-		}
 	}
 	void getCommand()
 	{

@@ -1,6 +1,7 @@
 #include "SyntaxHighlight/SyntaxHighlight.hpp"
 #include "TextEditor.hpp"
 #include "File/File.hpp"
+#include "Console/Console.hpp"
 
 #include <iostream>
 
@@ -13,13 +14,15 @@ int main(int argc, const char** argv)
 		std::cerr << "Usage: name <filename>";
 		return EXIT_FAILURE;
 	}
-
 	SyntaxHighlight::initSyntax();
 	File::setFileName(argv[1]);
 
 	File::loadFileContents();
 	Editor::loadRows();
-	Editor::getCommand();
+	Console::initConsole();
+	Console::displayConsole();
+	Console::getInput();
+	//Editor::getCommand();
 
     return EXIT_SUCCESS;
 }
