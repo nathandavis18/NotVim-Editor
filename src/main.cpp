@@ -8,7 +8,7 @@
 int main(int argc, const char** argv)
 {
 	argc = 2;
-	argv[1] = "test.txt";
+	argv[1] = "test1.txt";
 	if (argc < 2)
 	{
 		std::cerr << "Usage: name <filename>";
@@ -20,8 +20,8 @@ int main(int argc, const char** argv)
 	File::loadFileContents();
 	Editor::loadRows();
 	Console::initConsole();
-	Console::displayConsole();
-	Console::getInput();
+	//Console::displayConsole();
+	Console::refreshScreen();
 	//Editor::getCommand();
 
     return EXIT_SUCCESS;

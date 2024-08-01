@@ -9,6 +9,7 @@
 #include <Windows.h>
 #elif __linux__ || __APPLE__
 #include <termios.h>
+#include <ioctl.h>
 #endif
 namespace Console
 {
@@ -22,18 +23,21 @@ namespace Console
 		std::vector<Editor::Row>& editorRows;
 
 		bool dirty;
+		bool rawModeEnabled;
 		std::string statusMessage;
 		std::weak_ptr<SyntaxHighlight::EditorSyntax> syntax;
 	};
 
 	void initConsole();
-	void displayConsole();
 	bool enableRawInput();
 	void disableRawInput();
 	void getInput();
+	void refreshScreen();
 
+#ifdef _WIN32
 	namespace ConsoleDetails
 	{
 		void KeyEvent(KEY_EVENT_RECORD, uint8_t& outCount);
 	}
+#endif //_Win32
 }

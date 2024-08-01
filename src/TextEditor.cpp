@@ -11,14 +11,17 @@ namespace Editor
 
 	void loadRows()
 	{
-		size_t lineBreak = 0;
-		while ((lineBreak = File::contents().find('\n')) != std::string::npos)
+		if (File::contents().length() > 0)
 		{
-			rowContents.emplace_back(File::contents().substr(0, lineBreak), File::contents().substr(0, lineBreak), lineBreak);
-			File::contents().erase(File::contents().begin(), File::contents().begin() + lineBreak + 1);
+			size_t lineBreak = 0;
+			while ((lineBreak = File::contents().find('\n')) != std::string::npos)
+			{
+				rowContents.emplace_back(File::contents().substr(0, lineBreak), File::contents().substr(0, lineBreak), lineBreak);
+				File::contents().erase(File::contents().begin(), File::contents().begin() + lineBreak + 1);
+			}
+			rowContents.emplace_back(File::contents().substr(0, File::contents().length()), File::contents().substr(0, lineBreak), File::contents().length());
+			File::contents().clear();
 		}
-		rowContents.emplace_back(File::contents().substr(0, File::contents().length()), File::contents().substr(0, lineBreak), File::contents().length());
-		File::contents().clear();
 	}
 	void getCommand()
 	{
