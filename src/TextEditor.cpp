@@ -31,6 +31,9 @@ namespace Editor
 			case sci(KeyAction::ArrowDown):
 				Console::moveCursor(x);
 				break;
+			case sci(KeyAction::Delete):
+				Console::deleteChar(x);
+				break;
 			default:
 				std::cout << "Why are we here";
 				break;
@@ -44,7 +47,6 @@ namespace Editor
 		{
 			switch (x)
 			{
-			case sci(KeyAction::Delete):
 			case sci(KeyAction::Backspace):
 				Console::deleteChar(x);
 				break;

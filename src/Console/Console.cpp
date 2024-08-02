@@ -5,9 +5,9 @@
 #include <format>
 #define NuttyVersion "0.1a"
 
-#ifdef _WIN32 //Windows Console stuff	
 namespace Console
 {
+	#ifdef _WIN32 //Windows Console stuff	
 	Window window;
 	size_t fileNumRows = 0;
 	Window::Window() : cursorX(0), cursorY(0), rowOffset(0), colOffset(0), dirty(false), rawModeEnabled(false), statusMessage("Test Status Message Length go BRR"), fileRows(FileHandler::rows())
@@ -55,6 +55,10 @@ namespace Console
 			window.rawModeEnabled = false;
 		}
 	}
+#elif __linux__ || __APPLE__
+	//Apple/Linux raw mode console stuff
+#endif //OS Terminal Raw Mode
+
 	void refreshScreen()
 	{
 		FileHandler::Row* row;
@@ -114,11 +118,27 @@ namespace Console
 		aBuffer.append("\x1b[0K");
 		aBuffer.append("\x1b[7m");
 
-		std::string status, rStatus;
+		std::string status, rStatus, mode, curMode = "INSERT MODE";
 		status = std::format("{} - {} lines {}", FileHandler::fileName(), fileNumRows, window.dirty ? "(modified)" : "");
-		rStatus = std::format("row {} col {} colOffset {}", window.rowOffset + window.cursorY, window.colOffset + window.cursorX, window.colOffset);
+		mode = std::format("{}", curMode);
+		rStatus = std::format("row {}/{} col {}", window.rowOffset + window.cursorY, fileNumRows, window.colOffset + window.cursorX);
 		size_t statusLength = (status.length() > window.cols) ? window.cols : status.length();
 		aBuffer.append(status);
+
+		while (statusLength < (window.cols / 2))
+		{
+			if ((window.cols / 2) - statusLength == mode.length() / 2)
+			{
+				aBuffer.append(mode);
+				break;
+			}
+			else
+			{
+				aBuffer.append(" ");
+				++statusLength;
+			}
+		}
+		statusLength += mode.length();
 		
 		while (statusLength < window.cols)
 		{
@@ -387,4 +407,3 @@ namespace Console
 		window.dirty = true;
 	}
 }
-#endif //_WIN32
