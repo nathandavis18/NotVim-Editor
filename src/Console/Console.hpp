@@ -34,4 +34,6 @@ namespace Console
 	void moveCursor(const int key);
 	void deleteChar(const int key);
 	void deleteRow(const size_t rowNum);
+	void addRow();
+	void insertChar(const char c);
 }

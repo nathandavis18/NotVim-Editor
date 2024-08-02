@@ -9,11 +9,17 @@ using KeyActions::KeyAction;
 namespace Editor
 {
 	static constexpr uint8_t arrowKeyCode = 224;
+	static constexpr bool functionKeyCode = 0;
 	void handleInput()
 	{
 		uint8_t inputCount = 0;
 		int x = _getch();
 
+		if (x == functionKeyCode)
+		{
+			int _ = _getch(); //Ignore the function key specifier value
+			return; //Don't do anything if a function key (F1, F2, etc.) is pressed
+		}
 		if (x == arrowKeyCode)
 		{
 			x = _getch();
@@ -30,6 +36,10 @@ namespace Editor
 				break;
 			}
 		}
+		else if (x == sci(KeyAction::Esc))
+		{
+			return; //just for now
+		}
 		else
 		{
 			switch (x)
@@ -37,6 +47,12 @@ namespace Editor
 			case sci(KeyAction::Delete):
 			case sci(KeyAction::Backspace):
 				Console::deleteChar(x);
+				break;
+			case sci(KeyAction::Enter):
+				Console::addRow();
+				break;
+			default:
+				Console::insertChar(x);
 				break;
 			}
 		}

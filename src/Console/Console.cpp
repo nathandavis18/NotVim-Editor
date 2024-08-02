@@ -96,11 +96,14 @@ namespace Console
 			if (length > 0)
 			{
 				if (length > window.cols) length = window.cols;
-				std::string s = row->line.substr(window.colOffset);
-				for (size_t j = 0; j < length; ++j)
+				if (row->line.length() > window.colOffset)
 				{
-					aBuffer.append("\x1b[39m");
-					aBuffer += s[j];
+					std::string s = row->line.substr(window.colOffset);
+					for (size_t j = 0; j < length; ++j)
+					{
+						aBuffer.append("\x1b[39m");
+						aBuffer += s[j];
+					}
 				}
 			}
 			aBuffer.append("\x1b[39m");
@@ -113,7 +116,7 @@ namespace Console
 
 		std::string status, rStatus;
 		status = std::format("{} - {} lines {}", FileHandler::fileName(), fileNumRows, window.dirty ? "(modified)" : "");
-		rStatus = std::format("{}/{}", window.rowOffset + window.cursorY + 1, window.rows);
+		rStatus = std::format("row {} col {} colOffset {}", window.rowOffset + window.cursorY, window.colOffset + window.cursorX, window.colOffset);
 		size_t statusLength = (status.length() > window.cols) ? window.cols : status.length();
 		aBuffer.append(status);
 		
@@ -156,8 +159,8 @@ namespace Console
 				}
 			}
 		}
-		std::string buffer = std::format("\x1b[{};{}H", window.cursorY + 1, cx);
-		aBuffer.append(buffer);
+		std::string cursorPosition = std::format("\x1b[{};{}H", window.cursorY + 1, cx);
+		aBuffer.append(cursorPosition);
 		aBuffer.append("\x1b[?25h");
 		std::cout << aBuffer;
 	}
@@ -238,9 +241,9 @@ namespace Console
 			}
 			break;
 		case static_cast<int>(KeyActions::KeyAction::ArrowDown):
-			if (fileRow < window.rows)
+			if (fileRow <= window.rows)
 			{
-				if (window.cursorY + window.rowOffset == fileNumRows - 1) break;
+				if (window.cursorY + window.rowOffset == fileNumRows) break;
 				if (window.cursorY == window.rows - 1)
 				{
 					++window.rowOffset;
@@ -326,6 +329,62 @@ namespace Console
 		window.fileRows.erase(window.fileRows.begin() + rowNum);
 		window.dirty = true;
 		--fileNumRows;
+	}
+
+	void addRow()
+	{
+		size_t fileCol = window.cursorX + window.colOffset;
+		size_t fileRow = window.cursorY + window.rowOffset;
+
+		FileHandler::Row* row = (fileRow >= fileNumRows) ? nullptr : &window.fileRows[fileRow];
+		if (!row) return;
+		if (fileCol >= row->line.length())
+		{
+			window.fileRows.insert(window.fileRows.begin() + fileRow + 1, FileHandler::Row());
+		}
+		else if (fileCol == 0 && window.colOffset == 0)
+		{
+			window.fileRows.insert(window.fileRows.begin() + fileRow, FileHandler::Row());
+		}
+		else
+		{
+			FileHandler::Row newRow;
+			newRow.line = row->line.substr(fileCol);
+			row->line.erase(row->line.begin() + fileCol, row->line.end());
+			window.fileRows.insert(window.fileRows.begin() + fileRow + 1, newRow);
+		}
+		window.cursorX = 0; window.colOffset = 0;
+		if (window.cursorY >= window.rows - 1)
+		{
+			++window.rowOffset;
+		}
+		else
+		{
+			++window.cursorY;
+		}
+		++fileNumRows;
+		window.dirty = true;
+	}
+	void insertChar(const char c)
+	{
+		size_t fileCol = window.cursorX + window.colOffset;
+		size_t fileRow = window.cursorY + window.rowOffset;
+
+		FileHandler::Row* row = (fileRow >= fileNumRows) ? nullptr : &window.fileRows[fileRow];
+		if (!row) return;
+
+		size_t length = row->line.length();
+		row->line.insert(row->line.begin() + fileCol, c);
+		size_t x = row->line.size();
+		if (window.cursorX >= window.cols)
+		{
+			++window.colOffset;
+		}
+		else
+		{
+			++window.cursorX;
+		}
+		window.dirty = true;
 	}
 }
 #endif //_WIN32
