@@ -1,10 +1,21 @@
 #pragma once
 #include <string>
+#include <vector>
 
-namespace File
+namespace FileHandler
 {
-	void setFileName(std::string_view name);
+	std::string& fileName();
 	void loadFileContents();
 	std::string& contents();
 	void saveFile(std::string_view newContents);
+
+	void loadRows();
+	struct Row
+	{
+		std::string line;
+		std::string renderedLine;
+		size_t renderedSize;
+	};
+
+	std::vector<Row>& rows();
 }

@@ -8,21 +8,24 @@
 int main(int argc, const char** argv)
 {
 	argc = 2;
-	argv[1] = "test1.txt";
+	argv[1] = "test.txt";
 	if (argc < 2)
 	{
 		std::cerr << "Usage: name <filename>";
 		return EXIT_FAILURE;
 	}
 	SyntaxHighlight::initSyntax();
-	File::setFileName(argv[1]);
+	FileHandler::fileName() = argv[1];
 
-	File::loadFileContents();
-	Editor::loadRows();
+	FileHandler::loadFileContents();
+	FileHandler::loadRows();
 	Console::initConsole();
-	//Console::displayConsole();
-	Console::refreshScreen();
-	//Editor::getCommand();
+
+	while (true)
+	{
+		Console::refreshScreen();
+		Editor::handleInput();
+	}
 
     return EXIT_SUCCESS;
 }

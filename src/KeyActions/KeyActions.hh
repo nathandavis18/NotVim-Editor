@@ -3,25 +3,24 @@ namespace KeyActions
 {
 	enum class KeyAction
 	{
-		KeyNull,
-		CtrlC,
-		CtrlF,
-		CtrlX,
+		CtrlC = 3,
+		CtrlF = 6,
+		CtrlX = 24,
 		CtrlV,
-		Tab,
-		Enter,
-		CtrlS,
-		Esc,
-		Backspace,
-		Delete,
+		Tab = 9,
+		Enter = 13,
+		CtrlS = 19,
+		Esc = 27,
+		Backspace = 8,
 
-		ArrowLeft,
-		ArrowRight,
-		ArrowUp,
-		ArrowDown,
-		Home,
-		End,
-		PageUp,
-		PageDown
+		ArrowLeft = 75,
+		ArrowRight = 77,
+		ArrowUp = 72,
+		ArrowDown = 80,
+		Home = 71,
+		Delete = 83,
+		End = 79,
+		PageUp = 73,
+		PageDown = 81
 	};
 }

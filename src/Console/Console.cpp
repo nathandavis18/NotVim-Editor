@@ -1,24 +1,25 @@
 #include "Console.hpp"
 #include "../KeyActions/KeyActions.hh"
 #include <iostream>
+#include <fstream>
+#include <format>
 #define NuttyVersion "0.1a"
+
+#ifdef _WIN32 //Windows Console stuff	
 namespace Console
 {
-	const char* testStatusMessage = "Test Status Message Length go BRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR\0";
-	Window::Window() : cursorX(0), cursorY(0), rowOffset(0), colOffset(0), dirty(false), rawModeEnabled(false), statusMessage(testStatusMessage), editorRows(Editor::rows()) 
+	Window window;
+	size_t fileNumRows = 0;
+	Window::Window() : cursorX(0), cursorY(0), rowOffset(0), colOffset(0), dirty(false), rawModeEnabled(false), statusMessage("Test Status Message Length go BRR"), fileRows(FileHandler::rows())
 	{
 		CONSOLE_SCREEN_BUFFER_INFO screenInfo;
-		GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &screenInfo);
+		GetConsoleScreenBufferInfo(GetStdHandle(STD_ERROR_HANDLE), &screenInfo);
 
 		constexpr uint8_t statusMessageRows = 2;
 		rows = screenInfo.srWindow.Bottom - screenInfo.srWindow.Top + 1 - statusMessageRows;
 		cols = screenInfo.srWindow.Right - screenInfo.srWindow.Left + 1;
 	}
-	Window window{};
 
-#ifdef _WIN32 //Windows Console stuff
-	using namespace ConsoleDetails;
-	
 	DWORD defaultMode;
 	void initConsole()
 	{
@@ -31,6 +32,11 @@ namespace Console
 		{
 			std::cerr << "Error enabling raw input mode";
 			exit(EXIT_FAILURE);
+		}
+		fileNumRows = window.fileRows.size();
+		if (window.fileRows.size() < window.rows)
+		{
+			window.fileRows.resize(window.rows);
 		}
 	}
 	bool enableRawInput()
@@ -49,53 +55,23 @@ namespace Console
 			window.rawModeEnabled = false;
 		}
 	}
-	void getInput()
-	{
-		uint8_t inputs = 0;
-		INPUT_RECORD inBuf;
-		DWORD cNumRead;
-
-		while (inputs < 1)
-		{
-			ReadConsoleInput(GetStdHandle(STD_INPUT_HANDLE), &inBuf, 1, &cNumRead);
-			switch (inBuf.EventType)
-			{
-			case KEY_EVENT:
-				KeyEvent(inBuf.Event.KeyEvent, inputs);
-				break;
-			default:
-				break;
-			}
-		}
-	}
-	void ConsoleDetails::KeyEvent(KEY_EVENT_RECORD key, uint8_t& outCount)
-	{
-		constexpr uint8_t aKeyCode = 65, zKeyCode = 90;
-		if (key.bKeyDown && key.wVirtualKeyCode >= aKeyCode && key.wVirtualKeyCode <= zKeyCode)
-		{
-			char x = key.uChar.AsciiChar;
-			std::cout << "Key pressed: " << x << std::endl;
-			++outCount;
-		}
-	}
 	void refreshScreen()
 	{
-		Editor::Row* row;
-		std::string buffer; buffer.reserve(32);
+		FileHandler::Row* row;
 		std::string aBuffer;
 
 		aBuffer.append("\x1b[?251");
 		aBuffer.append("\x1b[H");
-		for (uint8_t y = 0; y < window.rows; ++y)
+		for (size_t y = 0; y < window.rows; ++y)
 		{
 			size_t fileRow = window.rowOffset + y;
-			if (fileRow >= window.editorRows.size())
+			if (fileRow >= fileNumRows)
 			{
-				if (window.editorRows.size() == 0 && y == window.rows / 3)
+				if (fileNumRows == 0 && y == window.rows / 3)
 				{
-					std::string welcome; welcome.resize(80);
-					int welcomeLength = std::snprintf(welcome.data(), welcome.size(), "Nutty Editor -- version %s\x1b[0K\r\n", NuttyVersion);
-					int padding = (window.cols - welcomeLength) / 2;
+					std::string welcome = std::format("Nutty Editor -- version {}\x1b[0K\r\n", NuttyVersion);
+					size_t welcomeLength = welcome.length();
+					size_t padding = (window.cols - welcomeLength) / 2;
 					if (padding > 0)
 					{
 						aBuffer.append("~");
@@ -114,13 +90,44 @@ namespace Console
 				}
 				continue;
 			}
-			
-			row = &window.editorRows[fileRow];
+			row = &window.fileRows[fileRow];
 
-			uint8_t length = row->renderedSize - window.colOffset;
+			size_t length = row->line.length() - window.colOffset;
 			if (length > 0)
 			{
 				if (length > window.cols) length = window.cols;
+				std::string s = row->line.substr(window.colOffset);
+				for (size_t j = 0; j < length; ++j)
+				{
+					aBuffer.append("\x1b[39m");
+					aBuffer += s[j];
+				}
+			}
+			aBuffer.append("\x1b[39m");
+			aBuffer.append("\x1b[0K");
+			aBuffer.append("\r\n");
+		}
+
+		aBuffer.append("\x1b[0K");
+		aBuffer.append("\x1b[7m");
+
+		std::string status, rStatus;
+		status = std::format("{} - {} lines {}", FileHandler::fileName(), fileNumRows, window.dirty ? "(modified)" : "");
+		rStatus = std::format("{}/{}", window.rowOffset + window.cursorY + 1, window.rows);
+		size_t statusLength = (status.length() > window.cols) ? window.cols : status.length();
+		aBuffer.append(status);
+		
+		while (statusLength < window.cols)
+		{
+			if (window.cols - statusLength == rStatus.length())
+			{
+				aBuffer.append(rStatus);
+				break;
+			}
+			else
+			{
+				aBuffer.append(" ");
+				++statusLength;
 			}
 		}
 
@@ -135,23 +142,190 @@ namespace Console
 			aBuffer.append(window.statusMessage);
 		}
 
-		int cx = 1;
+
+		size_t cx = 1;
 		size_t fileRow = window.rowOffset + window.cursorY;
-		Editor::Row* cursorRow = (fileRow >= window.editorRows.size()) ? nullptr : &window.editorRows[fileRow];
+		FileHandler::Row* cursorRow = (fileRow >= fileNumRows) ? nullptr : &window.fileRows[fileRow];
 		if (cursorRow)
 		{
-			for (uint8_t j = window.colOffset; j < (window.cursorX + window.colOffset); ++j, ++cx)
+			for (size_t j = window.colOffset; j < (window.cursorX + window.colOffset); ++j, ++cx)
 			{
 				if (j < cursorRow->renderedSize && cursorRow->line[j] == static_cast<char>(KeyActions::KeyAction::Tab))
 				{
-					cx += 7 - (cx % 8);
+					cx += 3 - (cx % 4);
 				}
 			}
 		}
-		snprintf(buffer.data(), buffer.length(), "\x1b[%d;%dH", window.cursorY + 1, cx);
+		std::string buffer = std::format("\x1b[{};{}H", window.cursorY + 1, cx);
 		aBuffer.append(buffer);
 		aBuffer.append("\x1b[?25h");
 		std::cout << aBuffer;
 	}
-#endif //_WIN32
+
+	void moveCursor(const int key)
+	{
+		size_t fileRow = window.rowOffset + window.cursorY;
+		size_t fileCol = window.colOffset + window.cursorX;
+		FileHandler::Row* row = (fileRow >= window.rows) ? nullptr : &window.fileRows[fileRow];
+
+		switch (key)
+		{
+		case static_cast<int>(KeyActions::KeyAction::ArrowLeft):
+			if (window.cursorX == 0)
+			{
+				if (window.colOffset > 0)
+				{
+					--window.colOffset;
+				}
+				else
+				{
+					if (fileRow > 0)
+					{
+						--window.cursorY;
+						window.cursorX = window.fileRows[fileRow - 1].line.length();
+						if (window.cursorX > window.cols - 1)
+						{
+							window.colOffset = window.cursorX - window.cols + 1;
+							window.cursorX = window.cols - 1; 
+						}
+					}
+				}
+			}
+			else
+			{
+				--window.cursorX;
+			}
+			break;
+		case static_cast<int>(KeyActions::KeyAction::ArrowRight):
+			if (row && fileCol < row->line.length())
+			{
+				if (window.cursorX == window.cols - 1)
+				{
+					++window.colOffset;
+				}
+				else
+				{
+					++window.cursorX;
+				}
+			}
+			else if (row && fileCol == row->line.length())
+			{
+				if (window.cursorY + window.rowOffset == fileNumRows - 1) break;
+
+				window.cursorX = 0;
+				window.colOffset = 0;
+				if (window.cursorY == window.rows - 1)
+				{
+					++window.rowOffset;
+				}
+				else
+				{
+					++window.cursorY;
+				}
+			}
+			break;
+		case static_cast<int>(KeyActions::KeyAction::ArrowUp):
+			if (window.cursorY == 0)
+			{
+				if (window.rowOffset > 0)
+				{
+					--window.rowOffset;
+				}
+			}
+			else
+			{
+				--window.cursorY;
+			}
+			break;
+		case static_cast<int>(KeyActions::KeyAction::ArrowDown):
+			if (fileRow < window.rows)
+			{
+				if (window.cursorY + window.rowOffset == fileNumRows - 1) break;
+				if (window.cursorY == window.rows - 1)
+				{
+					++window.rowOffset;
+				}
+				else
+				{
+					++window.cursorY;
+				}
+			}
+			break;
+		}
+
+		fileRow = window.rowOffset + window.cursorY;
+		fileCol = window.colOffset + window.cursorX;
+
+		row = (fileRow >= window.rows) ? nullptr : &window.fileRows[fileRow];
+		size_t rowLength = 0;
+		if (row)
+		{
+			rowLength = row->line.length();
+		}
+
+		if (fileCol > rowLength)
+		{
+			window.cursorX -= fileCol - rowLength;
+			if (window.cursorX < 0)
+			{
+				window.colOffset += window.cursorX;
+				window.cursorX = 0;
+			}
+		}
+	}
+
+	void deleteChar(const int key)
+	{
+		size_t fileRow = window.cursorY + window.rowOffset;
+		size_t fileCol = window.cursorX + window.colOffset;
+
+		FileHandler::Row* row = (fileRow >= fileNumRows) ? nullptr : &window.fileRows[fileRow];
+
+		if (!row || (fileCol == 0 && fileRow == 0 && key == static_cast<int>(KeyActions::KeyAction::Backspace))) return;
+		if (fileCol == 0 && key == static_cast<int>(KeyActions::KeyAction::Backspace))
+		{
+			fileCol = window.fileRows[fileRow - 1].line.length();
+			window.fileRows[fileRow - 1].line.append(row->line);
+			deleteRow(fileRow);
+			row = nullptr;
+
+			if (window.cursorY == 0)
+			{
+				--window.rowOffset;
+			}
+			else
+			{
+				--window.cursorY;
+			}
+
+			window.cursorX = fileCol;
+			if (window.cursorX >= window.cols)
+			{
+				size_t shiftAmount = window.cols - window.cursorX + 1;
+				window.cursorX -= shiftAmount;
+				window.colOffset += shiftAmount;
+			}
+		}
+		else if(key == static_cast<int>(KeyActions::KeyAction::Backspace))
+		{
+			row->line.erase(row->line.begin() + fileCol - 1);
+			if (window.cursorX == 0 && window.colOffset > 0)
+			{
+				--window.colOffset;
+			}
+			else
+			{
+				--window.cursorX;
+			}
+		}
+		window.dirty = true;
+	}
+	void deleteRow(const size_t rowNum)
+	{
+		if (rowNum > fileNumRows) return;
+		window.fileRows.erase(window.fileRows.begin() + rowNum);
+		window.dirty = true;
+		--fileNumRows;
+	}
 }
+#endif //_WIN32

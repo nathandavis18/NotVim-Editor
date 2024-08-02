@@ -1,59 +1,43 @@
 ﻿#include "TextEditor.hpp"
+#include "Console/Console.hpp"
 #include <iostream>
+#include <conio.h>
+
+using KeyActions::KeyAction;
+#define sci(KeyAction) static_cast<int>(KeyAction)
+
 namespace Editor
 {
-	std::vector<Row> rowContents;
-
-	std::vector<Row>& rows()
+	static constexpr uint8_t arrowKeyCode = 224;
+	void handleInput()
 	{
-		return rowContents;
-	}
+		uint8_t inputCount = 0;
+		int x = _getch();
 
-	void loadRows()
-	{
-		if (File::contents().length() > 0)
+		if (x == arrowKeyCode)
 		{
-			size_t lineBreak = 0;
-			while ((lineBreak = File::contents().find('\n')) != std::string::npos)
+			x = _getch();
+			switch (x)
 			{
-				rowContents.emplace_back(File::contents().substr(0, lineBreak), File::contents().substr(0, lineBreak), lineBreak);
-				File::contents().erase(File::contents().begin(), File::contents().begin() + lineBreak + 1);
+			case sci(KeyAction::ArrowLeft):
+			case sci(KeyAction::ArrowRight):
+			case sci(KeyAction::ArrowUp):
+			case sci(KeyAction::ArrowDown):
+				Console::moveCursor(x);
+				break;
+			default:
+				std::cout << "Why are we here";
+				break;
 			}
-			rowContents.emplace_back(File::contents().substr(0, File::contents().length()), File::contents().substr(0, lineBreak), File::contents().length());
-			File::contents().clear();
 		}
-	}
-	void getCommand()
-	{
-		std::string newContents;
-		while (std::cin)
+		else
 		{
-			std::string str;
-			std::getline(std::cin, str);
-			if (str == "q")
+			switch (x)
 			{
+			case sci(KeyAction::Delete):
+			case sci(KeyAction::Backspace):
+				Console::deleteChar(x);
 				break;
-			}
-			else if (str == "s")
-			{
-				File::saveFile(newContents);
-			}
-			else if (str == "sq")
-			{
-				File::saveFile(newContents);
-				break;
-			}
-			else if (str == "i")
-			{
-				std::getline(std::cin, newContents);
-			}
-			else if (str == "p")
-			{
-				std::cout << newContents << std::endl;
-			}
-			else
-			{
-				std::cout << str << std::endl;
 			}
 		}
 	}
