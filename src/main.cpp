@@ -1,5 +1,5 @@
 #include "SyntaxHighlight/SyntaxHighlight.hpp"
-#include "TextEditor.hpp"
+#include "Input/Input.hpp"
 #include "File/File.hpp"
 #include "Console/Console.hpp"
 
@@ -23,8 +23,28 @@ int main(int argc, const char** argv)
 
 	while (true)
 	{
-		Console::refreshScreen();
-		Editor::handleInput();
+		while (InputHandler::getMode() == InputHandler::Mode::CommandMode)
+		{
+			if (!Console::isRawMode())
+			{
+				Console::enableRawInput();
+			}
+			Console::refreshScreen("COMMAND");
+			InputHandler::doCommand();
+		}
+		while (InputHandler::getMode() == InputHandler::Mode::InputMode)
+		{
+			Console::refreshScreen("INSERT");
+			InputHandler::handleInput();
+		}
+		if (InputHandler::getMode() == InputHandler::Mode::ExitMode)
+		{
+			if (Console::isRawMode())
+			{
+				Console::disableRawInput();
+			}
+			break;
+		}
 	}
 
     return EXIT_SUCCESS;

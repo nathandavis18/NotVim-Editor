@@ -3,7 +3,7 @@
 project ("TextEditor")
 
 set(SOURCES
-	src/TextEditor.cpp
+	"src/Input/Input.cpp"
 	src/File/File.cpp
 	src/SyntaxHighlight/SyntaxHighlight.cpp
 	src/Console/Console.cpp
@@ -11,10 +11,10 @@ set(SOURCES
 )
 
 set (HEADERS
-	src/TextEditor.hpp
 	src/File/File.hpp
 	src/SyntaxHighlight/SyntaxHighlight.hpp
 	src/Console/Console.hpp
+	"src/Input/Input.hpp"
 )
 
 add_executable (TextEditor ${SOURCES} ${HEADERS})

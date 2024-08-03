@@ -45,6 +45,7 @@ namespace Console
 					 & ~ENABLE_ECHO_INPUT & ~ENABLE_PROCESSED_OUTPUT & ~ENABLE_WRAP_AT_EOL_OUTPUT); //Disabling input modes to enable raw mode
 
 		atexit(Console::disableRawInput);
+		window.rawModeEnabled = true;
 		return SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), rawMode);
 	}
 	void disableRawInput()
@@ -59,7 +60,7 @@ namespace Console
 	//Apple/Linux raw mode console stuff
 #endif //OS Terminal Raw Mode
 
-	void refreshScreen()
+	void refreshScreen(const std::string_view& mode)
 	{
 		FileHandler::Row* row;
 		std::string aBuffer;
@@ -118,9 +119,8 @@ namespace Console
 		aBuffer.append("\x1b[0K");
 		aBuffer.append("\x1b[7m");
 
-		std::string status, rStatus, mode, curMode = "INSERT MODE";
+		std::string status, rStatus;
 		status = std::format("{} - {} lines {}", FileHandler::fileName(), fileNumRows, window.dirty ? "(modified)" : "");
-		mode = std::format("{}", curMode);
 		rStatus = std::format("row {}/{} col {}", window.rowOffset + window.cursorY, fileNumRows, window.colOffset + window.cursorX);
 		size_t statusLength = (status.length() > window.cols) ? window.cols : status.length();
 		aBuffer.append(status);
@@ -156,14 +156,6 @@ namespace Console
 
 		aBuffer.append("\x1b[0m\r\n");
 		aBuffer.append("\x1b[0K");
-		if (window.statusMessage.length() > 0)
-		{
-			if (window.statusMessage.length() > window.cols)
-			{
-				window.statusMessage.erase(window.statusMessage.begin() + window.cols, window.statusMessage.end());
-			}
-			aBuffer.append(window.statusMessage);
-		}
 
 
 		size_t cx = 1;
@@ -405,5 +397,96 @@ namespace Console
 			++window.cursorX;
 		}
 		window.dirty = true;
+	}
+
+	bool isRawMode()
+	{
+		return window.rawModeEnabled;
+	}
+
+	bool isDirty()
+	{
+		return window.dirty;
+	}
+
+	void save()
+	{
+		std::string output;
+		for (size_t i = 0; i < fileNumRows; ++i)
+		{
+			if (i == fileNumRows - 1)
+			{
+				output.append(window.fileRows[i].line);
+			}
+			else
+			{
+				output.append(window.fileRows[i].line + "\n");
+			}
+		}
+		FileHandler::saveFile(output);
+		window.dirty = false;
+	}
+
+	void setCursorCommand()
+	{
+		window.cursorX = 0; window.cursorY = window.rows + 2;
+	}
+	void setCursorInsert()
+	{
+		window.cursorX = 0; window.cursorY = 0;
+	}
+
+	void shiftRowOffset(const int key)
+	{
+		if (key == static_cast<int>(KeyActions::KeyAction::CtrlArrowDown))
+		{
+			if (window.rowOffset == fileNumRows) return;
+			size_t fileCol = window.cursorX + window.colOffset;
+			size_t fileRow = window.cursorY + window.rowOffset;
+			if (window.rowOffset == fileNumRows - 1)
+			{
+				if (window.fileRows[fileRow].line.length() > (window.colOffset + window.cols))
+				{
+					window.colOffset += window.fileRows[fileRow].line.length() - (window.colOffset + window.cols);
+					window.cursorX = window.cols;
+				}
+				else
+				{
+					window.cursorX = window.fileRows[fileRow].line.length();
+				}
+				return;
+			}
+
+			++window.rowOffset;
+			++fileRow;
+			if (fileRow > fileNumRows - 1)
+			{
+				--window.cursorY;
+			}
+			if (fileCol > window.fileRows[fileRow].line.length())
+			{
+				window.cursorX = window.fileRows[fileRow].line.length() - window.colOffset;
+				return;
+			}
+		}
+		else if (key == static_cast<int>(KeyActions::KeyAction::CtrlArrowUp))
+		{
+			if (window.rowOffset == 0) return;
+			if (window.rowOffset == 1)
+			{
+				window.cursorX = 0;
+				window.colOffset = 0;
+				return;
+			}
+
+			--window.rowOffset;
+			size_t fileCol = window.cursorX + window.colOffset;
+			size_t fileRow = window.cursorY + window.rowOffset;
+			if (fileCol > window.fileRows[fileRow].line.length())
+			{
+				window.cursorX = window.fileRows[fileRow].line.length() - window.colOffset;
+				return;
+			}
+		}
 	}
 }

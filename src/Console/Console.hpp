@@ -1,5 +1,5 @@
 #pragma once
-#include "../TextEditor.hpp"
+#include "../Input/Input.hpp"
 #include "../SyntaxHighlight/SyntaxHighlight.hpp"
 #include <vector>
 #include <string>
@@ -30,10 +30,16 @@ namespace Console
 	void initConsole();
 	bool enableRawInput();
 	void disableRawInput();
-	void refreshScreen();
+	bool isRawMode();
+	bool isDirty();
+	void refreshScreen(const std::string_view& mode);
 	void moveCursor(const int key);
 	void deleteChar(const int key);
 	void deleteRow(const size_t rowNum);
 	void addRow();
 	void insertChar(const char c);
+	void save();
+	void setCursorCommand();
+	void setCursorInsert();
+	void shiftRowOffset(const int key);
 }

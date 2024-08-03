@@ -55,6 +55,5 @@ namespace FileHandler
 		std::filesystem::path path = std::filesystem::current_path() / _fileName;
 		std::ofstream file(path);
 		file << newContents;
-		file.close();
 	}
 }
