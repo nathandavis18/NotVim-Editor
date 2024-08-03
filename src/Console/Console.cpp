@@ -5,12 +5,15 @@
 #include <format>
 #define NuttyVersion "0.1a"
 
+
 namespace Console
 {
+	void replaceRenderTabs(std::string& renderedLine, size_t offset);
+
 	#ifdef _WIN32 //Windows Console stuff	
 	Window window;
 	size_t fileNumRows = 0;
-	Window::Window() : cursorX(0), cursorY(0), rowOffset(0), colOffset(0), dirty(false), rawModeEnabled(false), statusMessage("Test Status Message Length go BRR"), fileRows(FileHandler::rows())
+	Window::Window() : cursorX(0), cursorY(0), renderedCursorX(0), rowOffset(0), colOffset(0), dirty(false), rawModeEnabled(false), statusMessage("Test Status Message Length go BRR"), fileRows(FileHandler::rows())
 	{
 		CONSOLE_SCREEN_BUFFER_INFO screenInfo;
 		GetConsoleScreenBufferInfo(GetStdHandle(STD_ERROR_HANDLE), &screenInfo);
@@ -95,21 +98,23 @@ namespace Console
 				}
 				continue;
 			}
-			row = &window.fileRows[fileRow];
 
+			row = &window.fileRows[fileRow];
 			size_t length = row->line.length() - window.colOffset;
 			if (length > 0)
 			{
 				if (length > window.cols) length = window.cols;
-				if (row->line.length() > window.colOffset)
+				if (window.colOffset < row->line.length())
 				{
-					std::string s = row->line.substr(window.colOffset);
-					for (size_t j = 0; j < length; ++j)
-					{
-						aBuffer.append("\x1b[39m");
-						aBuffer += s[j];
-					}
+					row->renderedLine = row->line.substr(window.colOffset, length);
 				}
+				else
+				{
+					row->renderedLine = "";
+				}
+				replaceRenderTabs(row->renderedLine, window.colOffset);
+				aBuffer.append("\x1b[39m");
+				aBuffer.append(row->renderedLine);
 			}
 			aBuffer.append("\x1b[39m");
 			aBuffer.append("\x1b[0K");
@@ -119,9 +124,29 @@ namespace Console
 		aBuffer.append("\x1b[0K");
 		aBuffer.append("\x1b[7m");
 
+		size_t fileRow = window.rowOffset + window.cursorY;
+		window.renderedCursorX = 1;
+		FileHandler::Row* cursorRow = (fileRow >= fileNumRows) ? nullptr : &window.fileRows[fileRow];
+		if (cursorRow)
+		{
+			for (size_t j = window.colOffset; j < (window.cursorX + window.colOffset); ++j, ++window.renderedCursorX)
+			{
+				if (j < cursorRow->line.length() && cursorRow->line[j] == static_cast<char>(KeyActions::KeyAction::Tab))
+				{
+					window.renderedCursorX += 7 - (window.renderedCursorX % 8) + 1;
+				}
+			}
+		}
 		std::string status, rStatus;
 		status = std::format("{} - {} lines {}", FileHandler::fileName(), fileNumRows, window.dirty ? "(modified)" : "");
-		rStatus = std::format("row {}/{} col {}", window.rowOffset + window.cursorY, fileNumRows, window.colOffset + window.cursorX);
+		if (mode == "INSERT")
+		{
+			rStatus = std::format("row {}/{} col {}", window.rowOffset + window.cursorY + 1, fileNumRows, window.colOffset + window.renderedCursorX);
+		}
+		else if (mode == "COMMAND")
+		{
+			rStatus = "Enter command";
+		}
 		size_t statusLength = (status.length() > window.cols) ? window.cols : status.length();
 		aBuffer.append(status);
 
@@ -157,21 +182,7 @@ namespace Console
 		aBuffer.append("\x1b[0m\r\n");
 		aBuffer.append("\x1b[0K");
 
-
-		size_t cx = 1;
-		size_t fileRow = window.rowOffset + window.cursorY;
-		FileHandler::Row* cursorRow = (fileRow >= fileNumRows) ? nullptr : &window.fileRows[fileRow];
-		if (cursorRow)
-		{
-			for (size_t j = window.colOffset; j < (window.cursorX + window.colOffset); ++j, ++cx)
-			{
-				if (j < cursorRow->renderedSize && cursorRow->line[j] == static_cast<char>(KeyActions::KeyAction::Tab))
-				{
-					cx += 3 - (cx % 4);
-				}
-			}
-		}
-		std::string cursorPosition = std::format("\x1b[{};{}H", window.cursorY + 1, cx);
+		std::string cursorPosition = std::format("\x1b[{};{}H", window.cursorY + 1, window.renderedCursorX);
 		aBuffer.append(cursorPosition);
 		aBuffer.append("\x1b[?25h");
 		std::cout << aBuffer;
@@ -246,6 +257,11 @@ namespace Console
 				{
 					--window.rowOffset;
 				}
+				else
+				{
+					window.colOffset = 0;
+					window.cursorX = 0;
+				}
 			}
 			else
 			{
@@ -256,6 +272,19 @@ namespace Console
 			if (fileRow <= window.rows)
 			{
 				if (window.cursorY + window.rowOffset == fileNumRows) break;
+				if (window.cursorY + window.rowOffset + 1 == fileNumRows)
+				{
+					if (row->line.length() > (window.colOffset + window.cols))
+					{
+						window.colOffset += row->line.length() - (window.colOffset + window.cols);
+						window.cursorX = window.cols;
+					}
+					else
+					{
+						window.cursorX = row->line.length();
+					}
+					return;
+				}
 				if (window.cursorY == window.rows - 1)
 				{
 					++window.rowOffset;
@@ -384,8 +413,7 @@ namespace Console
 
 		FileHandler::Row* row = (fileRow >= fileNumRows) ? nullptr : &window.fileRows[fileRow];
 		if (!row) return;
-
-		size_t length = row->line.length();
+		
 		row->line.insert(row->line.begin() + fileCol, c);
 		size_t x = row->line.size();
 		if (window.cursorX >= window.cols)
@@ -489,4 +517,21 @@ namespace Console
 			}
 		}
 	}
+	void replaceRenderTabs(std::string& renderedLine, size_t offset)
+	{
+		for (size_t i = 0; i < renderedLine.length(); ++i)
+		{
+			if (renderedLine[i] == static_cast<char>(KeyActions::KeyAction::Tab))
+			{
+				renderedLine.replace(i, 1, " ");
+				uint8_t x = 7 - ((i + offset) % 8);
+				while (x > 0)
+				{
+					renderedLine.insert(i, " ");
+					--x;
+				}
+			}
+		}
+	}
 }
+

@@ -17,6 +17,7 @@ namespace Console
 	{
 		Window();
 		size_t cursorX, cursorY;
+		size_t renderedCursorX;
 		size_t rowOffset, colOffset;
 		size_t rows, cols;
 		

@@ -14,7 +14,6 @@ namespace FileHandler
 	{
 		std::string line;
 		std::string renderedLine;
-		size_t renderedSize;
 	};
 
 	std::vector<Row>& rows();
