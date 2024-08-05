@@ -6,29 +6,25 @@
 #include <memory>
 #include "../File/File.hpp"
 
-#ifdef _WIN32
-#include <Windows.h>
-#elif __linux__ || __APPLE__
-//Linux headers
-#endif
 namespace Console
 {
 	struct Window
 	{
-		Window();
-		size_t cursorX, cursorY;
-		size_t renderedCursorX;
+		Window(const std::string_view& fileName);
+
+		size_t actualCursorX, actualCursorY;
+		uint16_t renderedCursorX, renderedCursorY;
 		size_t rowOffset, colOffset;
-		size_t rows, cols;
+		uint16_t rows, cols;
 		
-		std::vector<FileHandler::Row>& fileRows;
+		std::vector<FileHandler::Row>* fileRows;
 
 		bool dirty;
 		bool rawModeEnabled;
 		std::string statusMessage;
 		std::weak_ptr<SyntaxHighlight::EditorSyntax> syntax;
 	};
-	void initConsole();
+	void initConsole(Window&);
 	bool enableRawInput();
 	void disableRawInput();
 	bool isRawMode();

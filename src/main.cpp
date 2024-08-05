@@ -8,18 +8,16 @@
 int main(int argc, const char** argv)
 {
 	argc = 2;
-	argv[1] = "test.txt";
+	argv[1] = "test1.txt";
 	if (argc < 2)
 	{
 		std::cerr << "Usage: name <filename>";
 		return EXIT_FAILURE;
 	}
-	SyntaxHighlight::initSyntax();
-	FileHandler::fileName() = argv[1];
+	Console::Window window(argv[1]);
 
-	FileHandler::loadFileContents();
-	FileHandler::loadRows();
-	Console::initConsole();
+	SyntaxHighlight::initSyntax();
+	Console::initConsole(window);
 
 	while (true)
 	{

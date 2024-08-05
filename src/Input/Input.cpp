@@ -69,7 +69,6 @@ namespace InputHandler
 			{
 				break;
 			}
-
 		}
 	}
 	void handleInput()
