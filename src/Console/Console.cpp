@@ -82,57 +82,63 @@ namespace Console
 	//Apple/Linux raw mode console stuff
 #endif //OS Terminal Raw Mode
 
-	void addRenderedCursorTabs()
+	uint16_t addRenderedCursorTabs(FileHandler::Row& row)
 	{
 		if (window->actualCursorX == 0)
 		{
-			window->renderedCursorX = 0; window->colOffset = 0;
-			return;
+			window->colOffset = 0;
+			return 0;
 		}
 
 		size_t spacesToAdd = 0;
 		for (size_t i = 0; i < window->actualCursorX; ++i)
 		{
-			if (i > window->fileRows->at(window->actualCursorY).line.length()) return;
+			if (i > row.line.length()) return window->renderedCursorX;
 
-			if (window->fileRows->at(window->actualCursorY).line[i] != static_cast<char>(KeyActions::KeyAction::Tab)) continue;
+			if (row.line[i] != static_cast<char>(KeyActions::KeyAction::Tab)) continue;
 			
 			spacesToAdd += 7 - ((i + spacesToAdd) % 8);
 		}
-		if (spacesToAdd == 0) return;
+		if (spacesToAdd == 0) return window->renderedCursorX;
 
-		window->renderedCursorX = window->actualCursorX + spacesToAdd;
+		size_t newRenderedCursor = window->actualCursorX + spacesToAdd;
 		if (window->renderedCursorX >= window->colOffset)
 		{
-			if (window->renderedCursorX >= window->colOffset + window->cols)
+			if (newRenderedCursor >= window->colOffset + window->cols)
 			{
-				window->colOffset = window->renderedCursorX - window->cols + 1;
-				window->renderedCursorX = window->cols - 1;
+				window->colOffset = newRenderedCursor - window->cols + 1;
+				newRenderedCursor = window->cols - 1;
 			}
 			else
 			{
-				window->renderedCursorX -= window->colOffset;
+				newRenderedCursor -= window->colOffset;
 			}
 		}
 		else
 		{
-			window->colOffset -= (window->colOffset - window->renderedCursorX);
-			window->renderedCursorX -= window->colOffset;
+			window->colOffset -= (window->colOffset - newRenderedCursor);
+			newRenderedCursor -= window->colOffset;
 		}
+
+		return newRenderedCursor;
 	}
 
 	void fixRenderedCursor()
 	{
-		if (window->renderedCursorX >= window->cols - 1)
+		while (window->renderedCursorX >= window->cols - 1)
 		{
 			--window->renderedCursorX;
 			++window->colOffset;
+		}
+		while (window->actualCursorX + window->colOffset > window->renderedCursorX)
+		{
+			--window->colOffset;
 		}
 	}
 
 	void refreshScreen(const std::string_view& mode)
 	{
-		addRenderedCursorTabs();
+		window->renderedCursorX = addRenderedCursorTabs(window->fileRows->at(window->actualCursorY));
 		fixRenderedCursor();
 
 		std::string aBuffer = "\x1b[H"; //Move the cursor to (0, 0)
@@ -353,7 +359,11 @@ namespace Console
 				{
 					window->colOffset = window->actualCursorX - window->cols + 1;
 				}
-				window->renderedCursorX = window->actualCursorX - window->colOffset;
+				window->renderedCursorX = window->actualCursorX;
+			}
+			else
+			{
+				window->renderedCursorX = window->actualCursorX;
 			}
 			break;
 		case static_cast<char>(KeyActions::KeyAction::ArrowDown):
@@ -364,7 +374,7 @@ namespace Console
 				{
 					window->colOffset = window->actualCursorX - window->cols + 1;
 				}
-				window->renderedCursorX = window->actualCursorX - window->colOffset;
+				window->renderedCursorX = window->actualCursorX;
 				return;
 			}
 
@@ -384,7 +394,7 @@ namespace Console
 				{
 					window->colOffset = window->actualCursorX - window->cols;
 				}
-				window->renderedCursorX = window->actualCursorX - window->colOffset;
+				window->renderedCursorX = window->actualCursorX;
 			}
 			break;
 		}
