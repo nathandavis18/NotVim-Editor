@@ -12,7 +12,7 @@ namespace Console
 	{
 		Window(const std::string_view& fileName);
 
-		size_t actualCursorX, actualCursorY;
+		size_t fileCursorX, fileCursorY;
 		uint16_t renderedCursorX, renderedCursorY;
 		size_t rowOffset, colOffset;
 		uint16_t rows, cols;
@@ -24,19 +24,19 @@ namespace Console
 		std::string statusMessage;
 		std::weak_ptr<SyntaxHighlight::EditorSyntax> syntax;
 	};
-	void initConsole(Window&);
+	void initConsole(Window&&);
 	bool enableRawInput();
 	void disableRawInput();
 	bool isRawMode();
 	bool isDirty();
 	void refreshScreen(const std::string_view& mode);
-	void moveCursor(const int key);
-	void deleteChar(const int key);
+	void moveCursor(const char key);
+	void deleteChar(const char key);
 	void deleteRow(const size_t rowNum);
 	void addRow();
 	void insertChar(const char c);
 	void save();
 	void setCursorCommand();
 	void setCursorInsert();
-	void shiftRowOffset(const int key);
+	void shiftRowOffset(const char key);
 }

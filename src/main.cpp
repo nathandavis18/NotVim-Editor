@@ -1,6 +1,4 @@
-#include "SyntaxHighlight/SyntaxHighlight.hpp"
 #include "Input/Input.hpp"
-#include "File/File.hpp"
 #include "Console/Console.hpp"
 
 #include <iostream>
@@ -15,9 +13,7 @@ int main(int argc, const char** argv)
 		return EXIT_FAILURE;
 	}
 	Console::Window window(argv[1]);
-
-	SyntaxHighlight::initSyntax();
-	Console::initConsole(window);
+	Console::initConsole(std::move(window));
 
 	while (true)
 	{

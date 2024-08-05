@@ -12,39 +12,49 @@
 #endif
 #define NuttyVersion "0.1a"
 
-void setWindowSize(Console::Window& window)
-{
-	CONSOLE_SCREEN_BUFFER_INFO screenInfo;
-	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &screenInfo);
-
-	constexpr uint8_t statusMessageRows = 2;
-	window.rows = screenInfo.srWindow.Bottom - screenInfo.srWindow.Top + 1;
-	window.cols = screenInfo.srWindow.Right - screenInfo.srWindow.Left + 1;
-
-	window.rows -= statusMessageRows;
-}
+void setWindowSize(std::unique_ptr<Console::Window>& window);
+uint16_t addRenderedCursorTabs(FileHandler::Row& row, std::unique_ptr<Console::Window>& window);
 void replaceRenderTabs(std::string&);
+
+/// <summary>
+/// Fixes the rendered cursor and column offset positions
+/// </summary>
+/// <param name="window"></param>
+void fixRenderedCursor(std::unique_ptr<Console::Window>& window)
+{
+	while (window->renderedCursorX >= window->cols - 1)
+	{
+		--window->renderedCursorX;
+		++window->colOffset;
+	}
+	while (window->fileCursorX + window->colOffset > window->renderedCursorX)
+	{
+		--window->colOffset;
+	}
+}
 
 namespace Console
 {
+	std::unique_ptr<Window> window; //The main window
 
-	#ifdef _WIN32 //Windows Console stuff	
-	std::unique_ptr<Window> window;
-	size_t fileNumRows = 0;
-
-	Window::Window(const std::string_view& fileName) : actualCursorX(0), actualCursorY(0), cols(0), rows(0), renderedCursorX(0), renderedCursorY(0), 
+	/// <summary>
+	/// Construct the window and initialize all the needed dependencies
+	/// </summary>
+	/// <param name="fileName"></param>
+	Window::Window(const std::string_view& fileName) : fileCursorX(0), fileCursorY(0), cols(0), rows(0), renderedCursorX(0), renderedCursorY(0), 
 		rowOffset(0), colOffset(0), dirty(false), rawModeEnabled(false), statusMessage("Test Status Message Length go BRR")
 	{
 		FileHandler::fileName() = fileName;
 		FileHandler::loadFileContents();
 		FileHandler::loadRows();
+		SyntaxHighlight::initSyntax();
 
 		fileRows = &FileHandler::rows();
-		fileNumRows = fileRows->size();
 	}
 
+#ifdef _WIN32 //Set up the window using Windows API
 	DWORD defaultMode;
-	void initConsole(Window& w)
+	void initConsole(Window&& w)
 	{
 		window = std::make_unique<Window>(w);
 		if (!GetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), &defaultMode))
@@ -57,7 +67,7 @@ namespace Console
 			std::cerr << "Error enabling raw input mode";
 			exit(EXIT_FAILURE);
 		}
-		setWindowSize(*window);
+		setWindowSize(window);
 	}
 	bool enableRawInput()
 	{
@@ -82,153 +92,101 @@ namespace Console
 	//Apple/Linux raw mode console stuff
 #endif //OS Terminal Raw Mode
 
-	uint16_t addRenderedCursorTabs(FileHandler::Row& row)
+	/// <summary>
+	/// Builds the output buffer and displays it to the user through std::cout
+	/// Uses ANSI escape codes for clearing screen/displaying cursor and for colors
+	/// </summary>
+	/// <param name="mode"></param>
+	void refreshScreen(const std::string_view& mode) //Temporarily a string view, will be changed later
 	{
-		if (window->actualCursorX == 0)
-		{
-			window->colOffset = 0;
-			return 0;
-		}
+		const char* emptyRowCharacter = "~";
+		window->renderedCursorX = addRenderedCursorTabs(window->fileRows->at(window->fileCursorY), window); //Get the rendered cursor position based on the file cursor
+		fixRenderedCursor(window);
 
-		size_t spacesToAdd = 0;
-		for (size_t i = 0; i < window->actualCursorX; ++i)
-		{
-			if (i > row.line.length()) return window->renderedCursorX;
+		std::string renderBuffer = "\x1b[H"; //Move the cursor to (0, 0)
+		renderBuffer.append("\x1b[?251"); //Hide the cursor
+		renderBuffer.append("\x1b[J"); //Erase the screen to redraw changes
 
-			if (row.line[i] != static_cast<char>(KeyActions::KeyAction::Tab)) continue;
-			
-			spacesToAdd += 7 - ((i + spacesToAdd) % 8);
-		}
-		if (spacesToAdd == 0) return window->renderedCursorX;
-
-		size_t newRenderedCursor = window->actualCursorX + spacesToAdd;
-		if (window->renderedCursorX >= window->colOffset)
+		for (size_t y = 0; y < window->rows; ++y) //For each row within the displayable range
 		{
-			if (newRenderedCursor >= window->colOffset + window->cols)
+			size_t fileRow = window->rowOffset + y; //The current row within the displayed rows
+			if (fileRow >= window->fileRows->size())
 			{
-				window->colOffset = newRenderedCursor - window->cols + 1;
-				newRenderedCursor = window->cols - 1;
-			}
-			else
-			{
-				newRenderedCursor -= window->colOffset;
-			}
-		}
-		else
-		{
-			window->colOffset -= (window->colOffset - newRenderedCursor);
-			newRenderedCursor -= window->colOffset;
-		}
-
-		return newRenderedCursor;
-	}
-
-	void fixRenderedCursor()
-	{
-		while (window->renderedCursorX >= window->cols - 1)
-		{
-			--window->renderedCursorX;
-			++window->colOffset;
-		}
-		while (window->actualCursorX + window->colOffset > window->renderedCursorX)
-		{
-			--window->colOffset;
-		}
-	}
-
-	void refreshScreen(const std::string_view& mode)
-	{
-		window->renderedCursorX = addRenderedCursorTabs(window->fileRows->at(window->actualCursorY));
-		fixRenderedCursor();
-
-		std::string aBuffer = "\x1b[H"; //Move the cursor to (0, 0)
-		aBuffer.append("\x1b[?251"); //Hide the cursor
-		aBuffer.append("\x1b[J"); //Erase the screen to redraw changes
-
-		for (size_t y = 0; y < window->rows; ++y)
-		{
-			size_t fileRow = window->rowOffset + y;
-			if (fileRow >= fileNumRows)
-			{
-				if (fileNumRows == 0 && y == window->rows / 3)
+				if (window->fileRows->size() == 0 && y == window->rows / 3) //If the file is empty and the current row is at 1/3 height (good display position)
 				{
 					std::string welcome = std::format("Nutty Editor -- version {}\x1b[0K\r\n", NuttyVersion);
 					size_t padding = (window->cols - welcome.length()) / 2;
 					if (padding > 0)
 					{
-						aBuffer.append("~");
+						renderBuffer.append(emptyRowCharacter);
 						--padding;
 					}
 					while (padding > 0)
 					{
-						aBuffer.append(" ");
+						renderBuffer.append(" ");
 						--padding;
 					}
-					aBuffer.append(welcome);
+					renderBuffer.append(welcome);
 				}
 				else
 				{
-					aBuffer.append("~\x1b[0K\r\n"); 
+					renderBuffer.append(emptyRowCharacter);
+					renderBuffer.append("\x1b[0K\r\n"); //Clear the rest of the row, perform carriage return, and move to next line
 				}
 				continue;
 			}
 
 			FileHandler::Row& row = window->fileRows->at(fileRow);
+			row.renderedLine = row.line;
 			if (row.line.length() > 0)
 			{
-				row.renderedLine = row.line;
 				replaceRenderTabs(row.renderedLine);
 			}
-			else
-			{
-				row.renderedLine.clear();
-			}
-			size_t renderedLength = row.renderedLine.length() - window->colOffset;
+			uint16_t renderedLength = (row.renderedLine.length() - window->colOffset) > window->cols ? window->cols : row.renderedLine.length();
 			if (renderedLength > 0)
 			{
-				if (renderedLength > window->cols) renderedLength = window->cols;
 				if (window->colOffset < row.renderedLine.length())
 				{
 					row.renderedLine = row.renderedLine.substr(window->colOffset, renderedLength);
-					aBuffer.append("\x1b[39m");
-					aBuffer.append(row.renderedLine);
+					renderBuffer.append("\x1b[39m");
+					renderBuffer.append(row.renderedLine);
 				}
 				else
 				{
 					row.renderedLine.clear();
 				}
 			}
-			aBuffer.append("\x1b[39m");
-			aBuffer.append("\x1b[0K");
-			aBuffer.append("\r\n");
+			renderBuffer.append("\x1b[39m");
+			renderBuffer.append("\x1b[0K\r\n");
 		}
 
-		aBuffer.append("\x1b[0K");
-		aBuffer.append("\x1b[7m");
+		renderBuffer.append("\x1b[0K");
+		renderBuffer.append("\x1b[7m");
 
 		std::string status, rStatus;
-		status = std::format("{} - {} lines {}", FileHandler::fileName(), fileNumRows, window->dirty ? "(modified)" : "");
+		status = std::format("{} - {} lines {}", FileHandler::fileName(), window->fileRows->size(), window->dirty ? "(modified)" : "");
 		if (mode == "INSERT")
 		{
-			rStatus = std::format("actual row {} actual col {} row {}/{} col {}", window->actualCursorY + 1, window->actualCursorX + 1, window->rowOffset + window->renderedCursorY + 1, fileNumRows, window->colOffset + window->renderedCursorX + 1);
+			rStatus = std::format("actual row {} actual col {} row {}/{} col {}", window->fileCursorY + 1, window->fileCursorX + 1, 
+				window->rowOffset + window->renderedCursorY + 1, window->fileRows->size(), window->colOffset + window->renderedCursorX + 1);
 		}
 		else if (mode == "COMMAND")
 		{
 			rStatus = "Enter command";
 		}
 		size_t statusLength = (status.length() > window->cols) ? window->cols : status.length();
-		aBuffer.append(status);
+		renderBuffer.append(status);
 
 		while (statusLength < (window->cols / 2))
 		{
 			if ((window->cols / 2) - statusLength == mode.length() / 2)
 			{
-				aBuffer.append(mode);
+				renderBuffer.append(mode);
 				break;
 			}
 			else
 			{
-				aBuffer.append(" ");
+				renderBuffer.append(" ");
 				++statusLength;
 			}
 		}
@@ -238,44 +196,44 @@ namespace Console
 		{
 			if (window->cols - statusLength == rStatus.length())
 			{
-				aBuffer.append(rStatus);
+				renderBuffer.append(rStatus);
 				break;
 			}
 			else
 			{
-				aBuffer.append(" ");
+				renderBuffer.append(" ");
 				++statusLength;
 			}
 		}
 
-		aBuffer.append("\x1b[0m\r\n");
-		aBuffer.append("\x1b[0K");
+		renderBuffer.append("\x1b[0m\r\n");
+		renderBuffer.append("\x1b[0K");
 
-		std::string cursorPosition = std::format("\x1b[{};{}H", window->renderedCursorY + 1, window->renderedCursorX + 1);
-		aBuffer.append(cursorPosition);
-		aBuffer.append("\x1b[?25h");
-		std::cout << aBuffer;
+		std::string cursorPosition = std::format("\x1b[{};{}H", window->renderedCursorY + 1, window->renderedCursorX + 1); //Show the rendered cursor position, offset by 1 for displaying
+		renderBuffer.append(cursorPosition);
+		renderBuffer.append("\x1b[?25h");
+		std::cout << renderBuffer;
 	}
 
-	void moveCursor(const int key)
+	void moveCursor(const char key)
 	{
 		switch (key)
 		{
 		case static_cast<char>(KeyActions::KeyAction::ArrowLeft):
-			if (window->actualCursorX == 0 && window->actualCursorY == 0) return;
+			if (window->fileCursorX == 0 && window->fileCursorY == 0) return;
 
-			if (window->actualCursorX == 0)
+			if (window->fileCursorX == 0)
 			{
-				--window->actualCursorY;
-				window->actualCursorX = window->fileRows->at(window->actualCursorY).line.length();
-				if (window->actualCursorX > window->cols + window->colOffset)
+				--window->fileCursorY;
+				window->fileCursorX = window->fileRows->at(window->fileCursorY).line.length();
+				if (window->fileCursorX > window->cols + window->colOffset)
 				{
-					window->colOffset = window->actualCursorX - window->cols + 1;
+					window->colOffset = window->fileCursorX - window->cols + 1;
 					window->renderedCursorX = window->cols - 1;
 				}
 				else
 				{
-					window->renderedCursorX = window->actualCursorX - window->colOffset;
+					window->renderedCursorX = window->fileCursorX - window->colOffset;
 				}
 				if (window->renderedCursorY == 0)
 				{
@@ -288,7 +246,7 @@ namespace Console
 			}
 			else
 			{
-				--window->actualCursorX;
+				--window->fileCursorX;
 				if (window->renderedCursorX == 0)
 				{
 					--window->colOffset;
@@ -300,17 +258,17 @@ namespace Console
 			}
 			break;
 		case static_cast<char>(KeyActions::KeyAction::ArrowRight):
-			if (window->actualCursorY == fileNumRows - 1)
+			if (window->fileCursorY == window->fileRows->size() - 1)
 			{
-				if (window->actualCursorX == window->fileRows->at(window->actualCursorY).line.length()) return;
+				if (window->fileCursorX == window->fileRows->at(window->fileCursorY).line.length()) return;
 			}
 
-			if (window->actualCursorX == window->fileRows->at(window->actualCursorY).line.length())
+			if (window->fileCursorX == window->fileRows->at(window->fileCursorY).line.length())
 			{
-				window->actualCursorX = 0;
+				window->fileCursorX = 0;
 				window->colOffset = 0;
 				window->renderedCursorX = 0;
-				++window->actualCursorY;
+				++window->fileCursorY;
 				if (window->renderedCursorY == window->rows)
 				{
 					++window->rowOffset;
@@ -322,7 +280,7 @@ namespace Console
 			}
 			else
 			{
-				++window->actualCursorX;
+				++window->fileCursorX;
 				if (window->renderedCursorX == window->cols - 1)
 				{
 					++window->colOffset;
@@ -334,15 +292,15 @@ namespace Console
 			}
 			break;
 		case static_cast<char>(KeyActions::KeyAction::ArrowUp):
-			if (window->actualCursorY == 0)
+			if (window->fileCursorY == 0)
 			{
 				window->colOffset = 0;
-				window->actualCursorX = 0;
+				window->fileCursorX = 0;
 				window->renderedCursorX = 0;
 				return;
 			}
 
-			--window->actualCursorY;
+			--window->fileCursorY;
 			if (window->renderedCursorY == 0)
 			{
 				--window->rowOffset;
@@ -352,33 +310,33 @@ namespace Console
 				--window->renderedCursorY;
 			}
 
-			if (window->actualCursorX > window->fileRows->at(window->actualCursorY).line.length())
+			if (window->fileCursorX > window->fileRows->at(window->fileCursorY).line.length())
 			{
-				window->actualCursorX = window->fileRows->at(window->actualCursorY).line.length();
-				if (window->actualCursorX > window->cols + window->colOffset)
+				window->fileCursorX = window->fileRows->at(window->fileCursorY).line.length();
+				if (window->fileCursorX > window->cols + window->colOffset)
 				{
-					window->colOffset = window->actualCursorX - window->cols + 1;
+					window->colOffset = window->fileCursorX - window->cols + 1;
 				}
-				window->renderedCursorX = window->actualCursorX;
+				window->renderedCursorX = window->fileCursorX;
 			}
 			else
 			{
-				window->renderedCursorX = window->actualCursorX;
+				window->renderedCursorX = window->fileCursorX;
 			}
 			break;
 		case static_cast<char>(KeyActions::KeyAction::ArrowDown):
-			if (window->actualCursorY == fileNumRows - 1)
+			if (window->fileCursorY == window->fileRows->size() - 1)
 			{
-				window->actualCursorX = window->fileRows->at(window->actualCursorY).line.length();
-				if (window->actualCursorX > window->colOffset + window->cols)
+				window->fileCursorX = window->fileRows->at(window->fileCursorY).line.length();
+				if (window->fileCursorX > window->colOffset + window->cols)
 				{
-					window->colOffset = window->actualCursorX - window->cols + 1;
+					window->colOffset = window->fileCursorX - window->cols + 1;
 				}
-				window->renderedCursorX = window->actualCursorX;
+				window->renderedCursorX = window->fileCursorX;
 				return;
 			}
 
-			++window->actualCursorY;
+			++window->fileCursorY;
 			if (window->renderedCursorY == window->rows - 1)
 			{
 				++window->rowOffset;
@@ -387,33 +345,33 @@ namespace Console
 			{
 				++window->renderedCursorY;
 			}
-			if(window->actualCursorX > window->fileRows->at(window->actualCursorY).line.length())
+			if(window->fileCursorX > window->fileRows->at(window->fileCursorY).line.length())
 			{
-				window->actualCursorX = window->fileRows->at(window->actualCursorY).line.length();
-				if (window->actualCursorX > window->cols + window->colOffset)
+				window->fileCursorX = window->fileRows->at(window->fileCursorY).line.length();
+				if (window->fileCursorX > window->cols + window->colOffset)
 				{
-					window->colOffset = window->actualCursorX - window->cols;
+					window->colOffset = window->fileCursorX - window->cols;
 				}
-				window->renderedCursorX = window->actualCursorX;
+				window->renderedCursorX = window->fileCursorX;
 			}
 			break;
 		}
 	}
 
-	void deleteChar(const int key)
+	void deleteChar(const char key)
 	{
-		if (window->actualCursorY >= fileNumRows) return;
-		FileHandler::Row& row = window->fileRows->at(window->actualCursorY);
+		if (window->fileCursorY >= window->fileRows->size()) return;
+		FileHandler::Row& row = window->fileRows->at(window->fileCursorY);
 		if (key == static_cast<char>(KeyActions::KeyAction::Backspace))
 		{
-			if (window->actualCursorX == 0 && window->actualCursorY == 0) return;
+			if (window->fileCursorX == 0 && window->fileCursorY == 0) return;
 
-			if (window->actualCursorX == 0)
+			if (window->fileCursorX == 0)
 			{
-				window->actualCursorX = window->fileRows->at(window->actualCursorY - 1).line.length();
-				window->fileRows->at(window->actualCursorY - 1).line.append(row.line);
-				deleteRow(window->actualCursorY);
-				--window->actualCursorY;
+				window->fileCursorX = window->fileRows->at(window->fileCursorY - 1).line.length();
+				window->fileRows->at(window->fileCursorY - 1).line.append(row.line);
+				deleteRow(window->fileCursorY);
+				--window->fileCursorY;
 				if (window->renderedCursorY == 0)
 				{
 					--window->rowOffset;
@@ -423,7 +381,7 @@ namespace Console
 					--window->renderedCursorY;
 				}
 
-				window->renderedCursorX = window->actualCursorX;
+				window->renderedCursorX = window->fileCursorX;
 				if (window->renderedCursorX >= window->cols)
 				{
 					size_t shiftAmount = window->cols - window->renderedCursorX + 1;
@@ -433,7 +391,7 @@ namespace Console
 			}
 			else
 			{
-				row.line.erase(row.line.begin() + window->actualCursorX - 1);
+				row.line.erase(row.line.begin() + window->fileCursorX - 1);
 				if (window->renderedCursorX == 0 && window->colOffset > 0)
 				{
 					--window->colOffset;
@@ -442,54 +400,53 @@ namespace Console
 				{
 					--window->renderedCursorX;
 				}
-				--window->actualCursorX;
+				--window->fileCursorX;
 			}
 		}
 		else if (key == static_cast<char>(KeyActions::KeyAction::Delete))
 		{
-			if (window->actualCursorY == fileNumRows - 1 && window->actualCursorX == row.line.length()) return;
+			if (window->fileCursorY == window->fileRows->size() - 1 && window->fileCursorX == row.line.length()) return;
 
-			if (window->actualCursorX == row.line.length())
+			if (window->fileCursorX == row.line.length())
 			{
-				row.line.append(window->fileRows->at(window->actualCursorY + 1).line);
-				deleteRow(window->actualCursorY + 1);
+				row.line.append(window->fileRows->at(window->fileCursorY + 1).line);
+				deleteRow(window->fileCursorY + 1);
 			}
 			else
 			{
-				row.line.erase(row.line.begin() + window->actualCursorX);
+				row.line.erase(row.line.begin() + window->fileCursorX);
 			}
 		}
 		window->dirty = true;
 	}
 	void deleteRow(const size_t rowNum)
 	{
-		if (rowNum > fileNumRows) return;
+		if (rowNum > window->fileRows->size()) return;
 		window->fileRows->erase(window->fileRows->begin() + rowNum);
 		window->dirty = true;
-		--fileNumRows;
 	}
 
 	void addRow()
 	{
-		if (window->actualCursorY >= fileNumRows) return;
-		FileHandler::Row& row = window->fileRows->at(window->actualCursorY);
-		if (window->actualCursorX == row.line.length())
+		if (window->fileCursorY >= window->fileRows->size()) return;
+		FileHandler::Row& row = window->fileRows->at(window->fileCursorY);
+		if (window->fileCursorX == row.line.length())
 		{
-			window->fileRows->insert(window->fileRows->begin() + window->actualCursorY + 1, FileHandler::Row());
+			window->fileRows->insert(window->fileRows->begin() + window->fileCursorY + 1, FileHandler::Row());
 		}
-		else if (window->actualCursorX == 0)
+		else if (window->fileCursorX == 0)
 		{
-			window->fileRows->insert(window->fileRows->begin() + window->actualCursorY, FileHandler::Row());
+			window->fileRows->insert(window->fileRows->begin() + window->fileCursorY, FileHandler::Row());
 		}
 		else
 		{
 			FileHandler::Row newRow;
-			newRow.line = row.line.substr(window->actualCursorX);
-			row.line.erase(row.line.begin() + window->actualCursorX, row.line.end());
-			window->fileRows->insert(window->fileRows->begin() + window->actualCursorY + 1, newRow);
+			newRow.line = row.line.substr(window->fileCursorX);
+			row.line.erase(row.line.begin() + window->fileCursorX, row.line.end());
+			window->fileRows->insert(window->fileRows->begin() + window->fileCursorY + 1, newRow);
 		}
 
-		window->renderedCursorX = 0; window->colOffset = 0; window->actualCursorX = 0; ++window->actualCursorY;
+		window->renderedCursorX = 0; window->colOffset = 0; window->fileCursorX = 0; ++window->fileCursorY;
 		if (window->renderedCursorY >= window->rows - 1)
 		{
 			++window->rowOffset;
@@ -498,16 +455,15 @@ namespace Console
 		{
 			++window->renderedCursorY;
 		}
-		++fileNumRows;
 		window->dirty = true;
 	}
 	void insertChar(const char c)
 	{
-		if (window->actualCursorY >= fileNumRows) return;
-		FileHandler::Row& row = window->fileRows->at(window->actualCursorY);
+		if (window->fileCursorY >= window->fileRows->size()) return;
+		FileHandler::Row& row = window->fileRows->at(window->fileCursorY);
 		
-		row.line.insert(row.line.begin() + window->actualCursorX, c);
-		++window->actualCursorX;
+		row.line.insert(row.line.begin() + window->fileCursorX, c);
+		++window->fileCursorX;
 		if (window->renderedCursorX >= window->cols - 1)
 		{
 			++window->colOffset;
@@ -532,9 +488,9 @@ namespace Console
 	void save()
 	{
 		std::string output;
-		for (size_t i = 0; i < fileNumRows; ++i)
+		for (size_t i = 0; i < window->fileRows->size(); ++i)
 		{
-			if (i == fileNumRows - 1)
+			if (i == window->fileRows->size() - 1)
 			{
 				output.append(window->fileRows->at(i).line);
 			}
@@ -549,32 +505,31 @@ namespace Console
 
 	void setCursorCommand()
 	{
-		window->renderedCursorX = 0; window->renderedCursorY = window->rows + 2; window->colOffset = 0; window->rowOffset = 0; window->actualCursorX = 0; window->actualCursorY = 0;
+		window->renderedCursorX = 0; window->renderedCursorY = window->rows + 2; window->colOffset = 0; window->rowOffset = 0; window->fileCursorX = 0; window->fileCursorY = 0;
 	}
 	void setCursorInsert()
 	{
 		if (window->fileRows->size() == 0)
 		{
 			window->fileRows->push_back(FileHandler::Row());
-			++fileNumRows;
 		}
-		window->renderedCursorX = window->renderedCursorY = window->actualCursorX = window->actualCursorY = window->colOffset = window->rowOffset = 0;
+		window->renderedCursorX = window->renderedCursorY = window->fileCursorX = window->fileCursorY = window->colOffset = window->rowOffset = 0;
 	}
 
-	void shiftRowOffset(const int key)
+	void shiftRowOffset(const char key)
 	{
 		if (key == static_cast<char>(KeyActions::KeyAction::CtrlArrowDown))
 		{
-			if (window->rowOffset == fileNumRows - 1) return;
+			if (window->rowOffset == window->fileRows->size() - 1) return;
 
 			++window->rowOffset;
-			if (window->actualCursorY < fileNumRows && window->renderedCursorY == 0)
+			if (window->fileCursorY < window->fileRows->size() && window->renderedCursorY == 0)
 			{
-				++window->actualCursorY;
-				if (window->actualCursorX > window->fileRows->at(window->actualCursorY).line.length())
+				++window->fileCursorY;
+				if (window->fileCursorX > window->fileRows->at(window->fileCursorY).line.length())
 				{
-					window->actualCursorX = window->fileRows->at(window->actualCursorY).line.length();
-					window->colOffset = window->actualCursorX - window->cols;
+					window->fileCursorX = window->fileRows->at(window->fileCursorY).line.length();
+					window->colOffset = window->fileCursorX - window->cols;
 				}
 			}
 			else
@@ -588,11 +543,11 @@ namespace Console
 			--window->rowOffset;
 			if (window->renderedCursorY == window->rows - 1)
 			{
-				--window->actualCursorY;
-				if (window->actualCursorX > window->fileRows->at(window->actualCursorY).line.length())
+				--window->fileCursorY;
+				if (window->fileCursorX > window->fileRows->at(window->fileCursorY).line.length())
 				{
-					window->actualCursorX = window->fileRows->at(window->actualCursorY).line.length();
-					window->colOffset = window->actualCursorX - window->cols;
+					window->fileCursorX = window->fileRows->at(window->fileCursorY).line.length();
+					window->colOffset = window->fileCursorX - window->cols;
 					return;
 				}
 			}
@@ -605,10 +560,10 @@ namespace Console
 }
 
 /// <summary>
-	/// This function needs work
-	/// </summary>
-	/// <param name="renderedLine"></param>
-	/// <param name="offset"></param>
+/// This function needs work
+/// </summary>
+/// <param name="renderedLine"></param>
+/// <param name="offset"></param>
 void replaceRenderTabs(std::string& renderedLine)
 {
 	size_t lineLength = renderedLine.length();
@@ -631,3 +586,71 @@ void replaceRenderTabs(std::string& renderedLine)
 		}
 	}
 }
+
+/// <summary>
+/// Adjust the rendered cursor position to account for spaces in the rendered string
+/// </summary>
+/// <param name="row">Row to check</param>
+/// <param name="window"></param>
+/// <returns>The new rendered cursor X position</returns>
+uint16_t addRenderedCursorTabs(FileHandler::Row& row, std::unique_ptr<Console::Window>& window)
+{
+	if (window->fileCursorX == 0)
+	{
+		window->colOffset = 0;
+		return 0;
+	}
+
+	size_t spacesToAdd = 0;
+	for (size_t i = 0; i < window->fileCursorX; ++i)
+	{
+		if (i > row.line.length()) return window->renderedCursorX;
+
+		if (row.line[i] != static_cast<char>(KeyActions::KeyAction::Tab)) continue;
+
+		spacesToAdd += 7 - ((i + spacesToAdd) % 8);
+	}
+	if (spacesToAdd == 0) return window->renderedCursorX;
+
+	size_t newRenderedCursor = window->fileCursorX + spacesToAdd;
+	if (window->renderedCursorX >= window->colOffset)
+	{
+		if (newRenderedCursor >= window->colOffset + window->cols)
+		{
+			window->colOffset = newRenderedCursor - window->cols + 1;
+			newRenderedCursor = window->cols - 1;
+		}
+		else
+		{
+			newRenderedCursor -= window->colOffset;
+		}
+	}
+	else
+	{
+		window->colOffset -= (window->colOffset - newRenderedCursor);
+		newRenderedCursor -= window->colOffset;
+	}
+
+	return newRenderedCursor;
+}
+
+
+/// <summary>
+/// Sets the window's row/column count using the correct OS API
+/// </summary>
+/// <param name="window"></param>
+#ifdef _WIN32
+void setWindowSize(std::unique_ptr<Console::Window>& window)
+{
+	CONSOLE_SCREEN_BUFFER_INFO screenInfo;
+	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &screenInfo);
+
+	constexpr uint8_t statusMessageRows = 2;
+	window->rows = screenInfo.srWindow.Bottom - screenInfo.srWindow.Top + 1;
+	window->cols = screenInfo.srWindow.Right - screenInfo.srWindow.Left + 1;
+
+	window->rows -= statusMessageRows;
+}
+#elif __linux__ || __APPLE__
+//linux/apple window size
+#endif
