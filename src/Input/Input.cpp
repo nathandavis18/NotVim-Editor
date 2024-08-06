@@ -6,6 +6,7 @@
 #include <conio.h>
 #elif defined(__linux__) || defined(__APPLE__)
 #include <termios.h>
+#include <unistd.h>
 char _getch();
 #endif
 
@@ -123,24 +124,25 @@ namespace InputHandler
 			}
 		}
 	}
+	
 }
 
 #if defined(__linux__) || defined(__APPLE__)
 static termios old, current;
 void initTermios()
 {
-	tcgetattr(fileno(std::cin), &old);
+	tcgetattr(STDIN_FILENO, &old);
 	current = old;
 	current.c_lflag &= ~ICANON;
 	current.c_lflag &= ~ECHO;
 
-	tcsetattr(fileno(std::cin), &current);
+	tcsetattr(STDIN_FILENO, &current);
 }
 unsigned char _getch()
 {
 	initTermios();
 	unsigned char ch = getchar();
-	tcsetattr(fileno(std::cin), TCSANOW, &old);
+	tcsetattr(STDIN_FILENO, TCSANOW, &old);
 	return ch;
 }
 #endif
