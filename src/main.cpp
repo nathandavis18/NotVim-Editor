@@ -30,8 +30,8 @@ int main(int argc, const char** argv)
 
 	Console::initConsole(argv[1]);
 
-	std::thread t(updateScreen);
-	t.detach();
+	//std::thread t(updateScreen);
+	//t.detach();
 
 	while (true)
 	{
@@ -60,7 +60,7 @@ int main(int argc, const char** argv)
 	}
 
 	runThread = false;
-	t.join();
+	//t.join();
 
     return EXIT_SUCCESS;
 }
