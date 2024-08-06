@@ -8,12 +8,6 @@ using KeyActions::KeyAction;
 
 namespace InputHandler
 {
-	Mode _mode = Mode::CommandMode;
-
-	Mode getMode()
-	{
-		return _mode;
-	}
 	static constexpr uint8_t specialKeyCode = 224;
 	static constexpr bool functionKeyCode = 0;
 	void doCommand()
@@ -22,7 +16,7 @@ namespace InputHandler
 		switch (input)
 		{
 		case 'i':
-			_mode = Mode::InputMode;
+			Console::mode(Mode::EditMode);
 			if (!Console::isRawMode())
 			{
 				Console::enableRawInput();
@@ -30,13 +24,13 @@ namespace InputHandler
 			Console::setCursorInsert();
 			break;
 		case ':':
-			_mode = Mode::CommandMode;
+			Console::mode(Mode::CommandMode);
 			if (Console::isRawMode())
 			{
 				Console::disableRawInput();
 			}
 			Console::setCursorCommand();
-			Console::refreshScreen("COMMAND");
+			Console::refreshScreen();
 			std::string command; 
 			std::cout << ":";
 			std::cin >> command;
@@ -47,12 +41,12 @@ namespace InputHandler
 			}
 			else if (command == "q")
 			{
-				_mode = Mode::ExitMode;
+				Console::mode(Mode::ExitMode);
 				break;
 			}
 			else if (command == "q!")
 			{
-				_mode = Mode::ExitMode; //Force quit, don't check if file isn't saved
+				Console::mode(Mode::ExitMode); //Force quit, don't check if file isn't saved
 				break;
 			}
 			else if (command == "w" || command == "s")
@@ -62,7 +56,7 @@ namespace InputHandler
 			else if (command == "wq" || command == "sq")
 			{
 				Console::save();
-				_mode = Mode::ExitMode;
+				Console::mode(Mode::ExitMode);
 				break;
 			}
 			else
@@ -106,7 +100,7 @@ namespace InputHandler
 		}
 		else if (input == sci(KeyAction::Esc))
 		{
-			_mode = Mode::CommandMode;
+			Console::mode(Mode::ReadMode);
 		}
 		else
 		{

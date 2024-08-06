@@ -12,26 +12,26 @@ int main(int argc, const char** argv)
 		std::cerr << "Usage: name <filename>";
 		return EXIT_FAILURE;
 	}
-	Console::Window window(argv[1]);
-	Console::initConsole(std::move(window));
+
+	Console::initConsole(argv[1]);
 
 	while (true)
 	{
-		while (InputHandler::getMode() == InputHandler::Mode::CommandMode)
+		while (Console::mode() == Mode::CommandMode || Console::mode() == Mode::ReadMode)
 		{
 			if (!Console::isRawMode())
 			{
 				Console::enableRawInput();
 			}
-			Console::refreshScreen("COMMAND");
+			Console::refreshScreen();
 			InputHandler::doCommand();
 		}
-		while (InputHandler::getMode() == InputHandler::Mode::InputMode)
+		while (Console::mode() == Mode::EditMode)
 		{
-			Console::refreshScreen("INSERT");
+			Console::refreshScreen();
 			InputHandler::handleInput();
 		}
-		if (InputHandler::getMode() == InputHandler::Mode::ExitMode)
+		if (Console::mode() == Mode::ExitMode)
 		{
 			if (Console::isRawMode())
 			{

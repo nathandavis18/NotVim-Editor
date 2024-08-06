@@ -5,14 +5,6 @@
 
 namespace InputHandler
 {
-	enum class Mode
-	{
-		CommandMode,
-		InputMode,
-		FindMode,
-		ExitMode
-	};
 	void handleInput();
 	void doCommand();
-	Mode getMode();
 }
