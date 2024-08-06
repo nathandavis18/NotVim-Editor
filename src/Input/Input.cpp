@@ -136,7 +136,7 @@ void initTermios()
 	current.c_lflag &= ~ICANON;
 	current.c_lflag &= ~ECHO;
 
-	tcsetattr(STDIN_FILENO, &current);
+	tcsetattr(STDIN_FILENO, TCSANOW, &current);
 }
 unsigned char _getch()
 {
