@@ -571,6 +571,7 @@ bool Console::setWindowSize()
 
 #elif defined(__linux__) || defined(__APPLE__)
 	winsize ws;
+	int rows, cols;
 	if (ioctl(1, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0)
 	{
 		std::cout.write("\x1b[999C\x1b[999B", 12);
@@ -590,11 +591,12 @@ bool Console::setWindowSize()
 			std::cerr << "Error getting window size";
 			exit(EXIT_FAILURE);
 		}
-		if (sscanf(buf.data() + 2, "%d;%d", &mWindow->rows, &mWindow->cols) != 2)
+		if (sscanf(buf.data() + 2, "%d;%d", &rows, &cols) != 2)
 		{
 			std::cerr << "Error getting window size";
 			exit(EXIT_FAILURE);
 		}
+		mWindow->rows = rows; mWindow->cols = cols;
 	}
 	else
 	{
@@ -633,7 +635,7 @@ bool Console::enableRawInput()
 	raw.c_cc[VMIN] = 0;
 	raw.c_cc[VTIME] = 1;
 
-	isEnabled = tcsetattr(STDIN_FILENO, TCSAFLUSH_ & raw);
+	isEnabled = tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 	
 #endif
 
