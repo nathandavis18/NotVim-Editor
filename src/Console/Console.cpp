@@ -570,7 +570,7 @@ bool Console::setWindowSize()
 	mWindow->cols = screenInfo.srWindow.Right - screenInfo.srWindow.Left + 1;
 
 #elif defined(__linux__) || defined(__APPLE__)
-	winsize ws;
+	/*winsize ws;
 	int rows, cols;
 	if (ioctl(1, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0)
 	{
@@ -602,7 +602,7 @@ bool Console::setWindowSize()
 	{
 		mWindow->cols = ws.ws_col;
 		mWindow->rows = ws.ws_row;
-	}
+	}*/
 #endif
 	constexpr uint8_t statusMessageRows = 2;
 	mWindow->rows -= statusMessageRows;
