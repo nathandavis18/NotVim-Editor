@@ -18,7 +18,7 @@ namespace InputHandler
 	void doCommand()
 	{
 		char input = _getch();
-		std::string command; 
+		std::string command;
 		switch (input)
 		{
 		case 'i':
@@ -104,18 +104,18 @@ namespace InputHandler
 		else if (input == sci(KeyAction::Esc))
 		{
 #if defined(__linux__) || defined(__APPLE__)
-			std::cout << "here";
-			char seq[3];
-			if (seq[0] == '[')
+			input = _getch();
+			if (input == '[')
 			{
-				if (seq[1] >= '0' && seq[1] <= '9')
+				input = _getch();
+				if (input >= '0' && input <= '9')
 				{
-					if (read(STDIN_FILENO, &seq[2], 1) == 0)
+					if (read(STDIN_FILENO, &input, 1) == 0)
 					{
 						Console::mode(Mode::ReadMode);
 						return;
 					}
-					if (seq[2] == '~')
+					if (input == '~')
 					{
 						//Dont have anything for this yet
 						/*switch (seq[1])
@@ -128,7 +128,7 @@ namespace InputHandler
 				}
 				else
 				{
-					switch (seq[1])
+					switch (input)
 					{
 					case 'A': Console::moveCursor(sci(KeyAction::ArrowUp)); return;
 					case 'B': Console::moveCursor(sci(KeyAction::ArrowDown)); return;
@@ -163,13 +163,13 @@ namespace InputHandler
 }
 
 #if defined(__linux__) || defined(__APPLE__)
-char _getch()
-{
-	int nread;
-	char c;
-	while ((nread = read(STDIN_FILENO, &c, 1)) == 0);
-	if (nread == -1) exit(EXIT_FAILURE);
+	char _getch()
+	{
+		int nread;
+		char c;
+		while ((nread = read(STDIN_FILENO, &c, 1)) == 0);
+		if (nread == -1) exit(EXIT_FAILURE);
 
-	return c;
-}
+		return c;
+	}
 #endif
