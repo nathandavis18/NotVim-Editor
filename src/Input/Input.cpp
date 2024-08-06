@@ -5,8 +5,6 @@
 #ifdef _WIN32
 #include <conio.h>
 #elif defined(__linux__) || defined(__APPLE__)
-#include <termios.h>
-#include <unistd.h>
 unsigned char _getch();
 #endif
 
@@ -128,21 +126,8 @@ namespace InputHandler
 }
 
 #if defined(__linux__) || defined(__APPLE__)
-static termios old, current;
-void initTermios()
-{
-	tcgetattr(STDIN_FILENO, &old);
-	current = old;
-	current.c_lflag &= ~ICANON;
-	current.c_lflag &= ~ECHO;
-
-	tcsetattr(STDIN_FILENO, TCSANOW, &current);
-}
 unsigned char _getch()
 {
-	initTermios();
-	unsigned char ch = getchar();
-	tcsetattr(STDIN_FILENO, TCSANOW, &old);
-	return ch;
+	return getchar();
 }
 #endif
