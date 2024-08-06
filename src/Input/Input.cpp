@@ -104,6 +104,7 @@ namespace InputHandler
 		else if (input == sci(KeyAction::Esc))
 		{
 #if defined(__linux__) || defined(__APPLE__)
+			std::cout << "here";
 			char seq[3];
 			if (seq[0] == '[')
 			{
