@@ -72,7 +72,7 @@ namespace InputHandler
 	void handleInput()
 	{
 		uint8_t inputCount = 0;
-		char input = getc();
+		char input = _getch();
 
 		if (input == functionKeyCode)
 		{
@@ -128,6 +128,6 @@ namespace InputHandler
 #if defined(__linux__) || defined(__APPLE__)
 unsigned char _getch()
 {
-	return getchar();
+	return getc(STDIN_FILENO);
 }
 #endif
