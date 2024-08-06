@@ -14,8 +14,12 @@ namespace FileHandler
 	std::string _fileName = "";
 	std::string fileContents = "";
 
-	std::string& fileName()
+	std::string& fileName(const std::string_view& fName)
 	{
+		if (!fName.empty())
+		{
+			_fileName = fName;
+		}
 		return _fileName;
 	}
 

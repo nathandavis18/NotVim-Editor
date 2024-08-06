@@ -4,7 +4,7 @@
 
 namespace FileHandler
 {
-	std::string& fileName();
+	std::string& fileName(const std::string_view& fName = "");
 	void loadFileContents();
 	std::string& contents();
 	void saveFile(std::string_view newContents);

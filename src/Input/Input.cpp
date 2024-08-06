@@ -16,21 +16,18 @@ namespace InputHandler
 		switch (input)
 		{
 		case 'i':
-			Console::mode(Mode::EditMode);
 			if (!Console::isRawMode())
 			{
 				Console::enableRawInput();
 			}
-			Console::setCursorInsert();
+			Console::enableEditMode();
 			break;
 		case ':':
-			Console::mode(Mode::CommandMode);
 			if (Console::isRawMode())
 			{
 				Console::disableRawInput();
 			}
-			Console::setCursorCommand();
-			Console::refreshScreen();
+			Console::enableCommandMode();
 			std::string command; 
 			std::cout << ":";
 			std::cin >> command;
@@ -64,6 +61,7 @@ namespace InputHandler
 				break;
 			}
 		}
+		Console::clearScreen();
 	}
 	void handleInput()
 	{

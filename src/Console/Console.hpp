@@ -20,31 +20,32 @@ enum class Mode
 class Console
 {
 public:
-	static void initConsole(const std::string_view&);
+	static Mode& mode(Mode = Mode::None);
+	static void refreshScreen();
 	static bool enableRawInput();
 	static void disableRawInput();
 	static bool isRawMode();
 	static bool isDirty();
 	static void shiftRowOffset(const char key);
-	static void setCursorCommand();
-	static void setCursorInsert();
+	static void enableCommandMode();
+	static void enableEditMode();
 	static void moveCursor(const char key);
 	static void deleteChar(const char key);
 	static void addRow();
 	static void insertChar(const char c);
-	static void refreshScreen();
 	static void save();
-	static Mode& mode(Mode = Mode::None);
+	static void initConsole(const std::string_view&);
+	static void clearScreen();
+	static bool setWindowSize();
 
 private:
 	struct Window
 	{
-		Window(const std::string_view& fileName);
-
+		Window();
 		size_t fileCursorX, fileCursorY;
 		size_t renderedCursorX, renderedCursorY;
 		size_t rowOffset, colOffset;
-		size_t rows, cols;
+		uint16_t rows, cols;
 
 		std::vector<FileHandler::Row>& fileRows;
 
@@ -53,8 +54,7 @@ private:
 		std::string statusMessage;
 		SyntaxHighlight::EditorSyntax* syntax;
 	};
-	static void fixRenderedCursor(const FileHandler::Row&);
-	static void setWindowSize();
+	static void fixRenderedCursorPosition(const FileHandler::Row&);
 	static size_t addRenderedCursorTabs(const FileHandler::Row&);
 	static void replaceRenderedStringTabs(std::string&);
 	static void deleteRow(const size_t rowNum);

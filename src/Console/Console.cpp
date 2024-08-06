@@ -13,68 +13,39 @@
 #define NuttyVersion "0.1a"
 
 /// <summary>
-/// Construct the window and initialize all the needed dependencies
+/// Construct the window
 /// </summary>
 /// <param name="fileName"></param>
-Console::Window::Window(const std::string_view& fileName) : fileCursorX(0), fileCursorY(0), cols(0), rows(0), renderedCursorX(0), renderedCursorY(0), 
-	rowOffset(0), colOffset(0), dirty(false), rawModeEnabled(false), statusMessage("Test Status Message Length go BRR"), fileRows(FileHandler::rows()), syntax(nullptr)
-{}
+Console::Window::Window() : fileCursorX(0), fileCursorY(0), cols(0), rows(0), renderedCursorX(0), renderedCursorY(0), 
+	rowOffset(0), colOffset(0), dirty(false), rawModeEnabled(false), statusMessage("Test Status Message Length go BRR"), fileRows(FileHandler::rows()), syntax(nullptr) {}
 
-#ifdef _WIN32 //Set up the window using Windows API
-DWORD defaultMode;
-void Console::initConsole(const std::string_view& fileName)
+
+/// <summary>
+/// Sets/Gets the current mode the editor is in
+/// </summary>
+/// <param name="m"></param>
+/// <returns></returns>
+Mode& Console::mode(Mode m)
 {
-	FileHandler::fileName() = fileName;
-	FileHandler::loadFileContents();
-	FileHandler::loadRows();
-	SyntaxHighlight::initSyntax();
-
-	mWindow = std::make_unique<Window>(Window(fileName));
-	if (!GetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), &defaultMode))
+	if (m != Mode::None)
 	{
-		std::cerr << "Error retrieving current console mode";
-		exit(EXIT_FAILURE);
+		mMode = m;
 	}
-	if (!(mWindow->rawModeEnabled = enableRawInput()))
-	{
-		std::cerr << "Error enabling raw input mode";
-		exit(EXIT_FAILURE);
-	}
-	setWindowSize();
+	return mMode;
 }
-bool Console::enableRawInput()
-{
-	if (mWindow->rawModeEnabled) return true;
 
-	DWORD rawMode = ENABLE_EXTENDED_FLAGS | (defaultMode & ~ENABLE_LINE_INPUT & ~ENABLE_PROCESSED_INPUT 
-					& ~ENABLE_ECHO_INPUT & ~ENABLE_PROCESSED_OUTPUT & ~ENABLE_WRAP_AT_EOL_OUTPUT); //Disabling certain input/output modes to enable raw mode
-
-	atexit(Console::disableRawInput);
-	mWindow->rawModeEnabled = true;
-	return SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), rawMode);
-}
-void Console::disableRawInput()
-{
-	if (mWindow->rawModeEnabled)
-	{
-		SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), defaultMode);
-		mWindow->rawModeEnabled = false;
-	}
-}
-#elif __linux__ || __APPLE__
-//Apple/Linux raw mode console stuff
-#endif //OS Terminal Raw Mode
 
 /// <summary>
 /// Builds the output buffer and displays it to the user through std::cout
 /// Uses ANSI escape codes for clearing screen/displaying cursor and for colors
 /// </summary>
 /// <param name="mode"></param>
-void Console::refreshScreen() //Temporarily a string view, will be changed later
+void Console::refreshScreen()
 {
+	setWindowSize();
 	const char* emptyRowCharacter = "~";
 
-	if (mWindow->fileRows.size() > 0 && mMode != Mode::CommandMode) fixRenderedCursor(mWindow->fileRows.at(mWindow->fileCursorY));
+	if (mWindow->fileRows.size() > 0 && mMode != Mode::CommandMode) fixRenderedCursorPosition(mWindow->fileRows.at(mWindow->fileCursorY));
 
 	std::string renderBuffer = "\x1b[H"; //Move the cursor to (0, 0)
 	renderBuffer.append("\x1b[?251"); //Hide the cursor
@@ -111,10 +82,12 @@ void Console::refreshScreen() //Temporarily a string view, will be changed later
 
 		FileHandler::Row& row = mWindow->fileRows.at(fileRow);
 		row.renderedLine = row.line;
-		if (row.line.length() > 0)
+		if (row.renderedLine.length() > 0)
 		{
-			replaceRenderedStringTabs(row.renderedLine);
+			replaceRenderedStringTabs(row.renderedLine); //Must do this before so information can be displayed properly
 		}
+
+		//Set the string length to render to the lesser of the viewport and the line length.
 		uint16_t renderedLength = (row.renderedLine.length() - mWindow->colOffset) > mWindow->cols ? mWindow->cols : row.renderedLine.length();
 		if (renderedLength > 0)
 		{
@@ -195,6 +168,10 @@ void Console::refreshScreen() //Temporarily a string view, will be changed later
 	std::cout << renderBuffer;
 }
 
+/// <summary>
+/// Moves the file cursor through the file rows depending on which key is pressed
+/// </summary>
+/// <param name="key">The arrow key pressed</param>
 void Console::moveCursor(const char key)
 {
 	switch (key)
@@ -258,6 +235,10 @@ void Console::moveCursor(const char key)
 	}
 }
 
+/// <summary>
+/// Deletes a character behind/ahead of the cursor depending on key pressed
+/// </summary>
+/// <param name="key"></param>
 void Console::deleteChar(const char key)
 {
 	if (mWindow->fileCursorY >= mWindow->fileRows.size()) return;
@@ -295,6 +276,11 @@ void Console::deleteChar(const char key)
 	}
 	mWindow->dirty = true;
 }
+
+/// <summary>
+/// Deletes a row when the last character in the row is removed
+/// </summary>
+/// <param name="rowNum"></param>
 void Console::deleteRow(const size_t rowNum)
 {
 	if (rowNum > mWindow->fileRows.size()) return;
@@ -302,10 +288,14 @@ void Console::deleteRow(const size_t rowNum)
 	mWindow->dirty = true;
 }
 
+/// <summary>
+/// Adds a new row when ENTER/RETURN is pressed
+/// Moves data past the cursor onto the new row
+/// </summary>
 void Console::addRow()
 {
-	if (mWindow->fileCursorY >= mWindow->fileRows.size()) return;
 	FileHandler::Row& row = mWindow->fileRows.at(mWindow->fileCursorY);
+
 	if (mWindow->fileCursorX == row.line.length())
 	{
 		mWindow->fileRows.insert(mWindow->fileRows.begin() + mWindow->fileCursorY + 1, FileHandler::Row());
@@ -325,9 +315,13 @@ void Console::addRow()
 	mWindow->fileCursorX = 0; ++mWindow->fileCursorY;
 	mWindow->dirty = true;
 }
+
+/// <summary>
+/// Inserts a given character at the current position and moves the cursor forward
+/// </summary>
+/// <param name="c"></param>
 void Console::insertChar(const char c)
 {
-	if (mWindow->fileCursorY >= mWindow->fileRows.size()) return;
 	FileHandler::Row& row = mWindow->fileRows.at(mWindow->fileCursorY);
 		
 	row.line.insert(row.line.begin() + mWindow->fileCursorX, c);
@@ -345,6 +339,9 @@ bool Console::isDirty()
 	return mWindow->dirty;
 }
 
+/// <summary>
+/// Saves the file and sets dirty = false
+/// </summary>
 void Console::save()
 {
 	std::string output;
@@ -363,50 +360,94 @@ void Console::save()
 	mWindow->dirty = false;
 }
 
-void Console::setCursorCommand()
+/// <summary>
+/// Moves the rendered cursor to the command line
+/// </summary>
+void Console::enableCommandMode()
 {
-	mWindow->renderedCursorX = 0; mWindow->renderedCursorY = mWindow->rows + 2; mWindow->colOffset = 0; mWindow->rowOffset = 0; mWindow->fileCursorX = 0; mWindow->fileCursorY = 0;
+	mWindow->renderedCursorX = 0; mWindow->renderedCursorY = mWindow->rows + 2;
+	mMode = Mode::CommandMode;
 }
-void Console::setCursorInsert()
+
+/// <summary>
+/// Moves the cursor to the default position when edit mode is enabled -- will need work to go back to previous edit position instead of the start every time
+/// </summary>
+void Console::enableEditMode()
 {
 	if (mWindow->fileRows.size() == 0)
 	{
 		mWindow->fileRows.push_back(FileHandler::Row());
 	}
-	mWindow->renderedCursorX = mWindow->renderedCursorY = mWindow->fileCursorX = mWindow->fileCursorY = mWindow->colOffset = mWindow->rowOffset = 0;
+	mMode = Mode::EditMode;
 }
 
+/// <summary>
+/// When CTRL-ArrowUp / CTRL-ArrowDown is pressed, shift the viewable screen area up/down one if possible
+/// </summary>
+/// <param name="key"></param>
 void Console::shiftRowOffset(const char key)
 {
 	if (key == static_cast<char>(KeyActions::KeyAction::CtrlArrowDown))
 	{
-		if (mWindow->rowOffset == mWindow->fileRows.size() - 1) return;
+		if (mWindow->rowOffset == mWindow->fileRows.size() - 1) return; //This is as far as the screen can be moved down
 
 		++mWindow->rowOffset;
-		if (mWindow->fileCursorY < mWindow->fileRows.size() && mWindow->renderedCursorY == 0)
+		if (mWindow->fileCursorY < mWindow->fileRows.size() && mWindow->renderedCursorY == 0) //Move the file cursor if the rendered cursor is at the top of the screen
 		{
 			++mWindow->fileCursorY;
-			if (mWindow->fileCursorX > mWindow->fileRows.at(mWindow->fileCursorY).line.length())
-			{
-				mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
-			}
 		}
 	}
 	else if (key == static_cast<char>(KeyActions::KeyAction::CtrlArrowUp))
 	{
-		if (mWindow->rowOffset == 0) return;
+		if (mWindow->rowOffset == 0) return; //A negative row offset would wrap and break the viewport so don't allow it to go negative
+
 		--mWindow->rowOffset;
-		if (mWindow->renderedCursorY == mWindow->rows - 1)
+		if (mWindow->renderedCursorY == mWindow->rows - 1) //Move the file cursor if the rendered cursor is at the bottom of the screen
 		{
 			--mWindow->fileCursorY;
-			if (mWindow->fileCursorX > mWindow->fileRows.at(mWindow->fileCursorY).line.length())
-			{
-				mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
-				return;
-			}
 		}
 	}
 }
+
+/// <summary>
+/// Fixes the rendered cursor and column offset positions
+/// </summary>
+/// <param name="window"></param>
+void Console::fixRenderedCursorPosition(const FileHandler::Row& row)
+{
+	//Fixing rendered X/Col position
+	mWindow->renderedCursorX = mWindow->fileCursorX;
+	mWindow->renderedCursorX += addRenderedCursorTabs(row);
+	mWindow->colOffset = 0;
+
+	if (mWindow->renderedCursorX >= mWindow->cols)
+	{
+		while (mWindow->renderedCursorX >= mWindow->cols)
+		{
+			--mWindow->renderedCursorX;
+			++mWindow->colOffset;
+		}
+	}
+	else
+	{
+		while (mWindow->fileCursorX + mWindow->colOffset > mWindow->renderedCursorX)
+		{
+			--mWindow->colOffset;
+		}
+	}
+
+	//Fixing rendered Y/Row position -- much easier to fix since there are no tabs to replace
+	mWindow->renderedCursorY = mWindow->fileCursorY - mWindow->rowOffset;
+	while (mWindow->fileCursorY - mWindow->rowOffset >= mWindow->rows)
+	{
+		++mWindow->rowOffset;
+	}
+	if (mWindow->renderedCursorY == mWindow->rows)
+	{
+		--mWindow->renderedCursorY;
+	}
+}
+
 
 /// <summary>
 /// This function needs work
@@ -463,62 +504,122 @@ size_t Console::addRenderedCursorTabs(const FileHandler::Row& row)
 	return spacesToAdd;
 }
 
+//=================================================================== OS-SPECIFIC FUNCTIONS =============================================================================\\
+
+#ifdef _WIN32
+DWORD defaultMode;
+#endif
 
 /// <summary>
-/// Sets the window's row/column count using the correct OS API
+/// Initializes the window and all other dependencies
+/// </summary>
+/// <param name="fileName">The filename grabbed from argv[1]</param>
+void Console::initConsole(const std::string_view& fName)
+{
+	FileHandler::fileName(fName);
+	FileHandler::loadFileContents();
+	FileHandler::loadRows();
+	SyntaxHighlight::initSyntax();
+
+	mWindow = std::make_unique<Window>(Window());
+	setWindowSize();
+
+#ifdef _WIN32
+	if (!GetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), &defaultMode)) //Try to get the default terminal settings
+	{
+		std::cerr << "Error retrieving current console mode";
+		exit(EXIT_FAILURE);
+	}
+	if (!(mWindow->rawModeEnabled = enableRawInput())) //Try to enable raw mode
+	{
+		std::cerr << "Error enabling raw input mode";
+		exit(EXIT_FAILURE);
+	}
+#elif __linux__ || __APPLE__
+	//Linux/Apple console modes here
+#endif
+}
+
+/// <summary>
+/// Sets the window's row/column count
 /// </summary>
 /// <param name="window"></param>
-#ifdef _WIN32
-void Console::setWindowSize()
+/// <returns>True if size has changed, false otherwise</returns>
+bool Console::setWindowSize()
 {
+	uint16_t prevRows = mWindow->rows;
+	uint16_t prevCols = mWindow->cols;
+#ifdef _WIN32
 	CONSOLE_SCREEN_BUFFER_INFO screenInfo;
-	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &screenInfo);
+	if (!GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &screenInfo))
+	{
+		std::cerr << "Error getting console screen buffer info";
+		exit(EXIT_FAILURE);
+	}
+#elif __linux__ || __APPLE__
+	//Linux/Apple Screen buffer stuff here
+#endif
 
 	constexpr uint8_t statusMessageRows = 2;
+
 	mWindow->rows = screenInfo.srWindow.Bottom - screenInfo.srWindow.Top + 1;
 	mWindow->cols = screenInfo.srWindow.Right - screenInfo.srWindow.Left + 1;
 
 	mWindow->rows -= statusMessageRows;
+
+	if (prevRows != mWindow->rows || prevCols != mWindow->cols) return true;
+
+	return false;
 }
-#elif __linux__ || __APPLE__
-//linux/apple window size
-#endif
 
 /// <summary>
-/// Fixes the rendered cursor and column offset positions
+/// Enables raw input mode by disabling specific flags
 /// </summary>
-/// <param name="window"></param>
-void Console::fixRenderedCursor(const FileHandler::Row& row)
+/// <returns></returns>
+bool Console::enableRawInput()
 {
-	mWindow->renderedCursorX = mWindow->fileCursorX - mWindow->colOffset;
-	mWindow->renderedCursorX += addRenderedCursorTabs(row);
-	if (mWindow->renderedCursorX >= mWindow->cols)
+	if (mWindow->rawModeEnabled) return true;
+	bool isEnabled = false;
+
+#ifdef _WIN32
+	DWORD rawMode = ENABLE_EXTENDED_FLAGS | (defaultMode & ~ENABLE_LINE_INPUT & ~ENABLE_PROCESSED_INPUT
+		& ~ENABLE_ECHO_INPUT & ~ENABLE_PROCESSED_OUTPUT & ~ENABLE_WRAP_AT_EOL_OUTPUT); //Disabling certain input/output modes to enable raw mode
+
+	isEnabled = SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), rawMode);
+#elif __linux__ || __APPLE__
+	//Linux/Apple raw input mode stuff here
+#endif
+
+	atexit(Console::disableRawInput);
+	mWindow->rawModeEnabled = true;
+	return isEnabled;
+}
+
+/// <summary>
+/// Disabled raw input mode by setting the terminal back to the default mode
+/// </summary>
+void Console::disableRawInput()
+{
+	if (mWindow->rawModeEnabled)
 	{
-		while (mWindow->renderedCursorX >= mWindow->cols)
-		{
-			--mWindow->renderedCursorX;
-			++mWindow->colOffset;
-		}
-	}
-	else
-	{
-		while (mWindow->fileCursorX + mWindow->colOffset > mWindow->renderedCursorX)
-		{
-			--mWindow->colOffset;
-		}
-	}
-	mWindow->renderedCursorY = mWindow->fileCursorY - mWindow->rowOffset;
-	if (mWindow->fileCursorY - mWindow->rowOffset >= mWindow->rows)
-	{
-		mWindow->rowOffset = mWindow->fileCursorY - mWindow->rows;
+#ifdef _WIN32
+		SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), defaultMode);
+#elif __linux__ || __APPLE__
+		//Linux/Apple disable raw input mode here
+#endif
+
+		mWindow->rawModeEnabled = false;
 	}
 }
 
-Mode& Console::mode(Mode m)
+/// <summary>
+/// Clears the screen after a command is used
+/// </summary>
+void Console::clearScreen()
 {
-	if (m != Mode::None)
-	{
-		mMode = m;
-	}
-	return mMode;
+#ifdef _WIN32
+	system("cls");
+#elif __linux__ || __APPLE__
+	system("clear");
+#endif
 }
