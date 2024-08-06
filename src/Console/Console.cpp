@@ -573,8 +573,8 @@ bool Console::setWindowSize()
 	winsize ws;
 	if (ioctl(1, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0)
 	{
-		std::cout.write("\x1b[999C\x1b[999B");
-		std::cout.write("\x1b[6n");
+		std::cout.write("\x1b[999C\x1b[999B", 12);
+		std::cout.write("\x1b[6n", 4);
 
 		std::string buf; buf.resize(32);
 		uint8_t i = 0;

@@ -122,7 +122,6 @@ namespace InputHandler
 			}
 		}
 	}
-	
 }
 
 #if defined(__linux__) || defined(__APPLE__)
