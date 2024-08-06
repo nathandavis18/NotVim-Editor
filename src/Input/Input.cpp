@@ -18,7 +18,7 @@ namespace InputHandler
 	static constexpr bool functionKeyCode = 0;
 	void doCommand()
 	{
-		char input = std::cin.get();
+		unsigned char input = std::cin.get();
 		std::string command; 
 		switch (input)
 		{
@@ -136,10 +136,10 @@ void initTermios()
 
 	tcsetattr(fileno(std::cin), &current);
 }
-char _getch()
+unsigned char _getch()
 {
 	initTermios();
-	char ch = getchar();
+	unsigned char ch = getchar();
 	tcsetattr(fileno(std::cin), TCSANOW, &old);
 	return ch;
 }
