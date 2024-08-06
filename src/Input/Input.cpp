@@ -127,6 +127,11 @@ namespace InputHandler
 #if defined(__linux__) || defined(__APPLE__)
 unsigned char _getch()
 {
-	return getc(STDIN_FILENO);
+	int nread;
+	char c;
+	while ((nread = read(STDIN_FILENO, &c, 1)) == 0);
+	if (nread == -1) exit(EXIT_FAILURE);
+
+	return c;
 }
 #endif
