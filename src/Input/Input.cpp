@@ -74,7 +74,7 @@ namespace InputHandler
 	void handleInput()
 	{
 		uint8_t inputCount = 0;
-		char input = _getch();
+		char input = getc();
 
 		if (input == functionKeyCode)
 		{

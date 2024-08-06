@@ -8,7 +8,9 @@
 #ifdef _WIN32
 #include <Windows.h>
 #elif defined(__linux__) || defined(__APPLE__)
-//Linux headers
+#include <termios.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
 #endif
 #define NuttyVersion "0.1a"
 
@@ -508,7 +510,9 @@ size_t Console::addRenderedCursorTabs(const FileHandler::Row& row)
 //=================================================================== OS-SPECIFIC FUNCTIONS =============================================================================\\
 
 #ifdef _WIN32
-DWORD defaultMode;
+	DWORD defaultMode;
+#elif defined(__linux__) || defined(__APPLE__)
+	termios defaultMode;
 #endif
 
 /// <summary>
@@ -531,14 +535,19 @@ void Console::initConsole(const std::string_view& fName)
 		std::cerr << "Error retrieving current console mode";
 		exit(EXIT_FAILURE);
 	}
+#elif defined(__linux__) || defined(__APPLE__)
+	if (tcgetattr(STDIN_FILENO, &defaultMode) == -1)
+	{
+		std::cerr << "Error retrieving current console mode";
+		exit(EXIT_FAILURE);
+	}
+#endif
+
 	if (!(mWindow->rawModeEnabled = enableRawInput())) //Try to enable raw mode
 	{
 		std::cerr << "Error enabling raw input mode";
 		exit(EXIT_FAILURE);
 	}
-#elif defined(__linux__) || defined(__APPLE__)
-	//Linux/Apple console modes here
-#endif
 }
 
 /// <summary>
@@ -561,10 +570,38 @@ bool Console::setWindowSize()
 	mWindow->cols = screenInfo.srWindow.Right - screenInfo.srWindow.Left + 1;
 
 #elif defined(__linux__) || defined(__APPLE__)
-	//Linux/Apple Screen buffer stuff here
+	winsize ws;
+	if (ioctl(1, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0)
+	{
+		std::cout.write("\x1b[999C\x1b[999B");
+		std::cout.write("\x1b[6n");
+
+		std::string buf; buf.resize(32);
+		uint8_t i = 0;
+		while (i < buf.size())
+		{
+			std::cin.read(buf.data(), 1);
+			if (buf[i] == 'R') break;
+			++i;
+		}
+		
+		if (buf[0] != static_cast<char>(KeyActions::KeyAction::Esc) || buf[1] != '[')
+		{
+			std::cerr << "Error getting window size";
+			exit(EXIT_FAILURE);
+		}
+		if (sscanf(buf.data() + 2, "%d;%d", &mWindow->rows, &mWindow->cols) != 2)
+		{
+			std::cerr << "Error getting window size";
+			exit(EXIT_FAILURE);
+		}
+	}
+	else
+	{
+		mWindow->cols = ws.ws_col;
+		mWindow->rows = ws.ws_row;
+	}
 #endif
-
-
 	constexpr uint8_t statusMessageRows = 2;
 	mWindow->rows -= statusMessageRows;
 
@@ -588,11 +625,19 @@ bool Console::enableRawInput()
 
 	isEnabled = SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), rawMode);
 #elif defined(__linux__) || defined(__APPLE__)
-	//Linux/Apple raw input mode stuff here
+	termios raw;
+	raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+	raw.c_oflag &= ~OPOST;
+	raw.c_cflag |= (CS8);
+	raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+	raw.c_cc[VMIN] = 0;
+	raw.c_cc[VTIME] = 1;
+
+	isEnabled = tcsetattr(STDIN_FILENO, TCSAFLUSH_ & raw);
+	
 #endif
 
 	atexit(Console::disableRawInput);
-	mWindow->rawModeEnabled = true;
 	return isEnabled;
 }
 
@@ -606,7 +651,7 @@ void Console::disableRawInput()
 #ifdef _WIN32
 		SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), defaultMode);
 #elif defined(__linux__) || defined(__APPLE__)
-		//Linux/Apple disable raw input mode here
+		tcsetattr(STDIN_FILENO, TCSAFLUSH, &defaultMode);
 #endif
 
 		mWindow->rawModeEnabled = false;
