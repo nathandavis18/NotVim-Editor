@@ -19,5 +19,5 @@ set (HEADERS
 
 add_executable (TextEditor ${SOURCES} ${HEADERS})
 
-set (CMAKE_CXX_FLAGS "-std=c++20")
+ set_property(TARGET TextEditor PROPERTY CXX_STANDARD 20)
 

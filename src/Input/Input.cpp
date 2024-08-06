@@ -4,7 +4,7 @@
 
 #ifdef _WIN32
 #include <conio.h>
-#elif __linux__ , __APPLE__
+#elif defined(__linux__) || defined(__APPLE__)
 #include <termios.h>
 char _getch();
 #endif
@@ -125,7 +125,7 @@ namespace InputHandler
 	}
 }
 
-#ifdef __linux__ , __APPLE__
+#if defined(__linux__) || defined(__APPLE__)
 static termios old, current;
 void initTermios()
 {

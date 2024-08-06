@@ -7,7 +7,7 @@
 
 #ifdef _WIN32
 #include <Windows.h>
-#elif __linux__ , __APPLE__
+#elif defined(__linux__) || defined(__APPLE__)
 //Linux headers
 #endif
 #define NuttyVersion "0.1a"
@@ -536,7 +536,7 @@ void Console::initConsole(const std::string_view& fName)
 		std::cerr << "Error enabling raw input mode";
 		exit(EXIT_FAILURE);
 	}
-#elif __linux__ , __APPLE__
+#elif defined(__linux__) || defined(__APPLE__)
 	//Linux/Apple console modes here
 #endif
 }
@@ -557,7 +557,7 @@ bool Console::setWindowSize()
 		std::cerr << "Error getting console screen buffer info";
 		exit(EXIT_FAILURE);
 	}
-#elif __linux__ , __APPLE__
+#elif defined(__linux__) || defined(__APPLE__)
 	//Linux/Apple Screen buffer stuff here
 #endif
 
@@ -587,7 +587,7 @@ bool Console::enableRawInput()
 		& ~ENABLE_ECHO_INPUT & ~ENABLE_PROCESSED_OUTPUT & ~ENABLE_WRAP_AT_EOL_OUTPUT); //Disabling certain input/output modes to enable raw mode
 
 	isEnabled = SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), rawMode);
-#elif __linux__ , __APPLE__
+#elif defined(__linux__) || defined(__APPLE__)
 	//Linux/Apple raw input mode stuff here
 #endif
 
@@ -605,7 +605,7 @@ void Console::disableRawInput()
 	{
 #ifdef _WIN32
 		SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), defaultMode);
-#elif __linux__ , __APPLE__
+#elif defined(__linux__) || defined(__APPLE__)
 		//Linux/Apple disable raw input mode here
 #endif
 
@@ -620,7 +620,7 @@ void Console::clearScreen()
 {
 #ifdef _WIN32
 	system("cls");
-#elif __linux__ , __APPLE__
+#elif defined(__linux__) || defined(__APPLE__)
 	system("clear");
 #endif
 }
