@@ -73,7 +73,6 @@ namespace InputHandler
 	{
 		uint8_t inputCount = 0;
 		char input = _getch();
-
 		if (input == functionKeyCode)
 		{
 			char _ = _getch(); //Ignore the function key specifier value
@@ -104,7 +103,44 @@ namespace InputHandler
 		}
 		else if (input == sci(KeyAction::Esc))
 		{
+#if defined(__linux__) || defined(__APPLE__)
+			char seq[3];
+			if (seq[0] == '[')
+			{
+				if (seq[1] >= '0' && seq[1] <= '9')
+				{
+					if (read(STDIN_FILENO, &seq[2], 1) == 0)
+					{
+						Console::mode(Mode::ReadMode);
+						return;
+					}
+					if (seq[2] == '~')
+					{
+						//Dont have anything for this yet
+						/*switch (seq[1])
+						{
+						case '3': return sci(KeyAction::Delete);
+						case '5': return sci(KeyAction::PageUp);
+						case '6': return sci(KeyAction::PageDown);
+						}*/
+					}
+				}
+				else
+				{
+					switch (seq[1])
+					{
+					case 'A': Console::moveCursor(sci(KeyAction::ArrowUp)); return;
+					case 'B': Console::moveCursor(sci(KeyAction::ArrowDown)); return;
+					case 'C': Console::moveCursor(sci(KeyAction::ArrowRight)); return;
+					case 'D': Console::moveCursor(sci(KeyAction::ArrowLeft)); return;
+					case 'H': return; //sci(KeyAction::Home);
+					case 'F': return; //sci(KeyAction::End);
+					}
+				}
+			}
+#else
 			Console::mode(Mode::ReadMode);
+#endif
 		}
 		else
 		{
