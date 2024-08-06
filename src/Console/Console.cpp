@@ -557,15 +557,15 @@ bool Console::setWindowSize()
 		std::cerr << "Error getting console screen buffer info";
 		exit(EXIT_FAILURE);
 	}
+	mWindow->rows = screenInfo.srWindow.Bottom - screenInfo.srWindow.Top + 1;
+	mWindow->cols = screenInfo.srWindow.Right - screenInfo.srWindow.Left + 1;
+
 #elif defined(__linux__) || defined(__APPLE__)
 	//Linux/Apple Screen buffer stuff here
 #endif
 
+
 	constexpr uint8_t statusMessageRows = 2;
-
-	mWindow->rows = screenInfo.srWindow.Bottom - screenInfo.srWindow.Top + 1;
-	mWindow->cols = screenInfo.srWindow.Right - screenInfo.srWindow.Left + 1;
-
 	mWindow->rows -= statusMessageRows;
 
 	if (prevRows != mWindow->rows || prevCols != mWindow->cols) return true;
