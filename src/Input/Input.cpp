@@ -7,7 +7,7 @@
 #elif defined(__linux__) || defined(__APPLE__)
 #include <termios.h>
 #include <unistd.h>
-char _getch();
+unsigned char _getch();
 #endif
 
 using KeyActions::KeyAction;
