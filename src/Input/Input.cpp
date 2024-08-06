@@ -1,7 +1,13 @@
 ﻿#include "Input.hpp"
 #include "../Console/Console.hpp"
 #include <iostream>
+
+#ifdef _WIN32
 #include <conio.h>
+#elif __linux__ || __APPLE__
+#include <termios.h>
+char _getch();
+#endif
 
 using KeyActions::KeyAction;
 #define sci(KeyAction) static_cast<int>(KeyAction)
@@ -13,6 +19,7 @@ namespace InputHandler
 	void doCommand()
 	{
 		char input = std::cin.get();
+		std::string command; 
 		switch (input)
 		{
 		case 'i':
@@ -28,7 +35,6 @@ namespace InputHandler
 				Console::disableRawInput();
 			}
 			Console::enableCommandMode();
-			std::string command; 
 			std::cout << ":";
 			std::cin >> command;
 
@@ -56,21 +62,22 @@ namespace InputHandler
 				Console::mode(Mode::ExitMode);
 				break;
 			}
-			else
-			{
-				break;
-			}
+			Console::mode(Mode::ReadMode);
+			break;
+		default:
+			Console::mode(Mode::ReadMode);
+			return;
 		}
 		Console::clearScreen();
 	}
 	void handleInput()
 	{
 		uint8_t inputCount = 0;
-		int input = _getch();
+		char input = _getch();
 
 		if (input == functionKeyCode)
 		{
-			int _ = _getch(); //Ignore the function key specifier value
+			char _ = _getch(); //Ignore the function key specifier value
 			return; //Don't do anything if a function key (F1, F2, etc.) is pressed
 		}
 		if (input == specialKeyCode)
@@ -117,3 +124,23 @@ namespace InputHandler
 		}
 	}
 }
+
+#ifdef __linux__ || __APPLE__
+static termios old, current;
+void initTermios()
+{
+	tcgetattr(fileno(std::cin), &old);
+	current = old;
+	current.c_lflag &= ~ICANON;
+	current.c_lflag &= ~ECHO;
+
+	tcsetattr(fileno(std::cin), &current);
+}
+char _getch()
+{
+	initTermios();
+	char ch = getchar();
+	tcsetattr(fileno(std::cin), TCSANOW, &old);
+	return ch;
+}
+#endif

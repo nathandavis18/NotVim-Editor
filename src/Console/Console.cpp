@@ -367,6 +367,7 @@ void Console::enableCommandMode()
 {
 	mWindow->renderedCursorX = 0; mWindow->renderedCursorY = mWindow->rows + 2;
 	mMode = Mode::CommandMode;
+	refreshScreen();
 }
 
 /// <summary>

@@ -1,4 +1,4 @@
-﻿cmake_minimum_required (VERSION 3.10)
+﻿cmake_minimum_required (VERSION 3.12)
 
 project ("TextEditor")
 
@@ -19,7 +19,5 @@ set (HEADERS
 
 add_executable (TextEditor ${SOURCES} ${HEADERS})
 
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET TextEditor PROPERTY CXX_STANDARD 20)
-endif()
+set_property(TARGET TextEditor PROPERTY CXX_STANDARD 20)
 
