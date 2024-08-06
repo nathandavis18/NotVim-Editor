@@ -635,7 +635,14 @@ bool Console::enableRawInput()
 	raw.c_cc[VMIN] = 0;
 	raw.c_cc[VTIME] = 1;
 
-	isEnabled = tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+	if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) < 0)
+	{
+		return false;
+	}
+	else
+	{
+		isEnabled = true;
+	}
 	
 #endif
 
