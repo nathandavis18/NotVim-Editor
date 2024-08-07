@@ -5,11 +5,11 @@
 #ifdef _WIN32
 #include <conio.h>
 #elif defined(__linux__) || defined(__APPLE__)
-unsigned char _getch();
+int _getch();
 #endif
 
 using KeyActions::KeyAction;
-#define sci(KeyAction) static_cast<unsigned char>(KeyAction)
+#define sci(KeyAction) static_cast<int>(KeyAction)
 
 namespace InputHandler
 {
@@ -17,7 +17,7 @@ namespace InputHandler
 	static constexpr bool functionKeyCode = 0;
 	void doCommand()
 	{
-		unsigned char input = _getch();
+		int input = _getch();
 		std::string command;
 		switch (input)
 		{
@@ -72,10 +72,10 @@ namespace InputHandler
 	void handleInput()
 	{
 		uint8_t inputCount = 0;
-		unsigned char input = _getch();
+		int input = _getch();
 		if (input == functionKeyCode)
 		{
-			unsigned char _ = _getch(); //Ignore the function key specifier value
+			int _ = _getch(); //Ignore the function key specifier value
 			return; //Don't do anything if a function key (F1, F2, etc.) is pressed
 		}
 		if (input == specialKeyCode)
@@ -166,10 +166,10 @@ namespace InputHandler
 }
 
 #if defined(__linux__) || defined(__APPLE__)
-unsigned char _getch()
+int _getch()
 {
 	int nread;
-	unsigned char c;
+	int c;
 	while ((nread = read(STDIN_FILENO, &c, 1)) == 0);
 	if (nread == -1) exit(EXIT_FAILURE);
 
