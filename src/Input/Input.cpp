@@ -149,15 +149,15 @@ namespace InputHandler
 			switch (input)
 			{
 			case sci(KeyAction::Backspace):
-				std::cout << "Backspace";
+				std::cout << "Backspace"; exit(0);
 				Console::deleteChar(input);
 				break;
 			case sci(KeyAction::Enter):
-				std::cout << "Enter";
+				std::cout << "Enter"; exit(0);
 				Console::addRow();
 				break;
 			default:
-				std::cout << "Other";
+				std::cout << "Other"; exit(0);
 				Console::insertChar(input);
 				break;
 			}
