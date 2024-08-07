@@ -47,8 +47,8 @@ This executable is a standalone executable, so you may also add this file to you
 
 ### Known Bugs
 
- - Arrow keys cannot be held to quickly navigate through the screen.
- - Cursor does not save rendered position, but rather position within the file, so cursor may jump around when moving up/down
+ - Arrow keys cannot be held to quickly navigate through the screen on Linux.
+ - Cursor does not save rendered position, but rather position within the file, so cursor may appear to jump around when moving up/down
  - No syntax highlighting (WIP)
 
 
