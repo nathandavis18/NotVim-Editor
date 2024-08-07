@@ -528,7 +528,7 @@ void Console::initConsole(const std::string_view& fName)
 	FileHandler::fileName(fName);
 	FileHandler::loadFileContents();
 	FileHandler::loadRows();
-	SyntaxHighlight::initSyntax();
+	SyntaxHighlight::initSyntax(fName);
 
 	mWindow = std::make_unique<Window>(Window());
 	setWindowSize();

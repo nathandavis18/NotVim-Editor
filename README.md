@@ -1,3 +1,3 @@
-# TextEditor
+# NotVim Editor
 
-A custom-built text-editor using C++ and Dear ImGUI.
+A custom, 0 dependencies, cross-platform VIM-like console-based text editor. Tested on Windows and Linux (untested on macOS). 
