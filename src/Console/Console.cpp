@@ -552,7 +552,7 @@ static termios defaultMode;
 void Console::initConsole(const std::string_view& fName)
 {
 	FileHandler::fileName(fName);
-	SyntaxHighlight::initSyntax(fName);
+	SyntaxHighlight::initSyntax(fName); //Doesn't do anything yet
 
 	mWindow = std::make_unique<Window>(Window());
 	setWindowSize();
