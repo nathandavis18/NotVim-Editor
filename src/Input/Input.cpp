@@ -5,7 +5,7 @@
 #ifdef _WIN32
 #include <conio.h>
 #elif defined(__linux__) || defined(__APPLE__)
-int _getch();
+char _getch();
 #endif
 
 using KeyActions::KeyAction;
@@ -166,10 +166,10 @@ namespace InputHandler
 }
 
 #if defined(__linux__) || defined(__APPLE__)
-int _getch()
+char _getch()
 {
 	int nread;
-	int c;
+	char c;
 	while ((nread = read(STDIN_FILENO, &c, 1)) == 0);
 	if (nread == -1) exit(EXIT_FAILURE);
 
