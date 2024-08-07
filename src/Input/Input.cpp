@@ -147,7 +147,7 @@ namespace InputHandler
 		}
 		else
 		{
-			std::cout << input;
+			std::cout << static_cast<int>(input);
 			switch (input)
 			{
 			case sci(KeyAction::Backspace):
