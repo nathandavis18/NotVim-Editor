@@ -9,11 +9,7 @@ namespace KeyActions
 		Tab = 9,
 		Enter = 13,
 		Esc = 27,
-#ifdef _WIN32
 		Backspace = 8, CtrlBackspace = 127,
-#elif defined(__linux__) || defined(__APPLE__) //These are reversed from windows->linux for some reason?
-		Backspace = 127, CtrlBackspace = 8,
-#endif
 		ArrowLeft = 75, CtrlArrowLeft = 115,
 		ArrowRight = 77, CtrlArrowRight = 116,
 		ArrowUp = 72, CtrlArrowUp = 141,

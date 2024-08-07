@@ -142,7 +142,7 @@ uint8_t _getch()
 			{
 				if (read(STDIN_FILENO, seq + 2, 1) > 0)
 				{
-					//std::cout << seq; exit(0);
+					std::cout << seq; exit(0);
 					if (seq[2] == '~')
 					{
 						switch (seq[1])
