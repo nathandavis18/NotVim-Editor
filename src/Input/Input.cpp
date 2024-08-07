@@ -17,7 +17,7 @@ namespace InputHandler
 	static constexpr bool functionKeyCode = 0;
 	void doCommand()
 	{
-		int input = _getch();
+		char input = std::cin.get();
 		std::string command;
 		switch (input)
 		{
