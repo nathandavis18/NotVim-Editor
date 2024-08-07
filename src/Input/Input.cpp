@@ -73,6 +73,7 @@ namespace InputHandler
 	{
 		uint8_t inputCount = 0;
 		char input = _getch();
+		std::cout << input; exit(0);
 		if (input == functionKeyCode)
 		{
 			char _ = _getch(); //Ignore the function key specifier value
@@ -118,12 +119,12 @@ namespace InputHandler
 					if (input == '~')
 					{
 						//Dont have anything for this yet
-						/*switch (seq[1])
+						switch (seq[1])
 						{
-						case '3': return sci(KeyAction::Delete);
-						case '5': return sci(KeyAction::PageUp);
-						case '6': return sci(KeyAction::PageDown);
-						}*/
+						case '3': Console::deleteChar(sci(KeyAction::Delete); return;
+						case '5': return; //sci(KeyAction::PageUp);
+						case '6': return; //sci(KeyAction::PageDown);
+						}
 					}
 				}
 				else
