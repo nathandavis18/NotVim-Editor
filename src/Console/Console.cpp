@@ -11,6 +11,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <signal.h>
 #endif
 #define NuttyVersion "0.1a"
 
@@ -165,10 +166,12 @@ void Console::refreshScreen()
 	renderBuffer.append("\x1b[0m\r\n");
 	renderBuffer.append("\x1b[0K");
 
-	std::string cursorPosition = std::format("\x1b[{};{}H", mWindow->renderedCursorY + 1, mWindow->renderedCursorX + 1); //Show the rendered cursor position, offset by 1 for displaying
+	std::string cursorPosition = std::format("\x1b[{};{}f", mWindow->renderedCursorY + 1, mWindow->renderedCursorX + 1); //Show the rendered cursor position, offset by 1 for displaying
 	renderBuffer.append(cursorPosition);
+	//renderBuffer.append(cursorPosition);
 	renderBuffer.append("\x1b[?25h");
 	std::cout << renderBuffer;
+	std::cout.flush();
 }
 
 /// <summary>
@@ -513,7 +516,7 @@ size_t Console::addRenderedCursorTabs(const FileHandler::Row& row)
 #ifdef _WIN32
 DWORD defaultMode;
 #elif defined(__linux__) || defined(__APPLE__)
-termios defaultMode;
+static termios defaultMode;
 #endif
 
 /// <summary>
@@ -537,11 +540,12 @@ void Console::initConsole(const std::string_view& fName)
 		exit(EXIT_FAILURE);
 	}
 #elif defined(__linux__) || defined(__APPLE__)
-	if (tcgetattr(STDIN_FILENO, &defaultMode) == -1)
+	if (tcgetattr(STDOUT_FILENO, &defaultMode) == -1)
 	{
 		std::cerr << "Error retrieving current console mode";
 		exit(EXIT_FAILURE);
 	}
+	signal(SIGWINCH, nullptr);
 #endif
 
 	if (!(mWindow->rawModeEnabled = enableRawInput())) //Try to enable raw mode
@@ -620,13 +624,11 @@ bool Console::setWindowSize()
 bool Console::enableRawInput()
 {
 	if (mWindow->rawModeEnabled) return true;
-	bool isEnabled = false;
-
 #ifdef _WIN32
 	DWORD rawMode = ENABLE_EXTENDED_FLAGS | (defaultMode & ~ENABLE_LINE_INPUT & ~ENABLE_PROCESSED_INPUT
 		& ~ENABLE_ECHO_INPUT & ~ENABLE_PROCESSED_OUTPUT & ~ENABLE_WRAP_AT_EOL_OUTPUT); //Disabling certain input/output modes to enable raw mode
 
-	isEnabled = SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), rawMode);
+	return SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), rawMode);
 #elif defined(__linux__) || defined(__APPLE__)
 	termios raw;
 	raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
@@ -636,19 +638,16 @@ bool Console::enableRawInput()
 	raw.c_cc[VMIN] = 0;
 	raw.c_cc[VTIME] = 1;
 
-	if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) < 0)
+	if (tcsetattr(STDOUT_FILENO, TCSAFLUSH, &raw) < 0)
 	{
 		return false;
 	}
 	else
 	{
-		isEnabled = true;
+		atexit(disableRawInput);
+		return true;
 	}
-
 #endif
-
-	atexit(Console::disableRawInput);
-	return isEnabled;
 }
 
 /// <summary>
@@ -656,16 +655,12 @@ bool Console::enableRawInput()
 /// </summary>
 void Console::disableRawInput()
 {
-	if (mWindow->rawModeEnabled)
-	{
 #ifdef _WIN32
-		SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), defaultMode);
+	SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), defaultMode);
 #elif defined(__linux__) || defined(__APPLE__)
-		tcsetattr(STDIN_FILENO, TCSAFLUSH, &defaultMode);
+	tcsetattr(STDOUT_FILENO, TCSAFLUSH, &defaultMode);
 #endif
-
-		mWindow->rawModeEnabled = false;
-	}
+	mWindow->rawModeEnabled = false;
 }
 
 /// <summary>

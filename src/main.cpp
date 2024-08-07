@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <thread>
- 
+
 static std::atomic<bool> runThread = true; //Main thread will update this bool, while secondary thread reads from it
 
 void updateScreen() //Makes sure the screen stays up to date with the size
@@ -37,10 +37,6 @@ int main(int argc, const char** argv)
 	{
 		while (Console::mode() == Mode::CommandMode || Console::mode() == Mode::ReadMode)
 		{
-			if (!Console::isRawMode())
-			{
-				Console::enableRawInput();
-			}
 			Console::refreshScreen();
 			InputHandler::doCommand();
 		}
@@ -51,10 +47,7 @@ int main(int argc, const char** argv)
 		}
 		if (Console::mode() == Mode::ExitMode)
 		{
-			if (Console::isRawMode())
-			{
-				Console::disableRawInput();
-			}
+			Console::disableRawInput();
 			break;
 		}
 	}
@@ -62,5 +55,5 @@ int main(int argc, const char** argv)
 	runThread = false;
 	//t.join();
 
-    return EXIT_SUCCESS;
+	return EXIT_SUCCESS;
 }

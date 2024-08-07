@@ -29,10 +29,8 @@ namespace InputHandler
 			Console::enableEditMode();
 			break;
 		case ':':
-			if (Console::isRawMode())
-			{
-				Console::disableRawInput();
-			}
+			std::cout << "Here";
+			Console::disableRawInput();
 			Console::enableCommandMode();
 			std::cout << ":";
 			std::cin >> command;
@@ -67,12 +65,12 @@ namespace InputHandler
 			Console::mode(Mode::ReadMode);
 			return;
 		}
+		Console::enableRawInput();
 		Console::clearScreen();
 	}
 	void handleInput()
 	{
 		uint8_t input = _getch();
-		std::cout << std::to_string(static_cast<uint8_t>(input)); exit(0);
 #ifdef _WIN32
 		if (input == functionKeyCode)
 		{
@@ -125,7 +123,6 @@ uint8_t _getch()
 	while ((nread = read(STDIN_FILENO, &c, 1)) == 0);
 	if (nread == -1) exit(EXIT_FAILURE);
 
-	//std::cout << std::to_string(c); exit(0);
 
 	while (true)
 	{
@@ -134,9 +131,7 @@ uint8_t _getch()
 		case sci(KeyAction::Esc):
 			char seq[3];
 			if (read(STDIN_FILENO, seq, 1) == 0) return sci(KeyAction::Esc);
-			//std::cout << seq; exit(0);
 			if (read(STDIN_FILENO, seq + 1, 1) == 0) return sci(KeyAction::Esc);
-			//std::cout << seq; exit(0);
 
 			if (seq[0] == '[')
 			{
@@ -157,6 +152,8 @@ uint8_t _getch()
 						switch (seq[1])
 						{
 						case '3': return sci(KeyAction::CtrlDelete);
+						case '5': return sci(KeyAction::CtrlPageUp);
+						case '6': return sci(KeyAction::CtrlPageDown);
 						}
 					}
 				}
