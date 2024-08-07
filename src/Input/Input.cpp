@@ -5,11 +5,11 @@
 #ifdef _WIN32
 #include <conio.h>
 #elif defined(__linux__) || defined(__APPLE__)
-char _getch();
+unsigned char _getch();
 #endif
 
 using KeyActions::KeyAction;
-#define sci(KeyAction) static_cast<char>(KeyAction)
+#define sci(KeyAction) static_cast<unsigned char>(KeyAction)
 
 namespace InputHandler
 {
@@ -166,13 +166,13 @@ namespace InputHandler
 }
 
 #if defined(__linux__) || defined(__APPLE__)
-	char _getch()
-	{
-		int nread;
-		char c;
-		while ((nread = read(STDIN_FILENO, &c, 1)) == 0);
-		if (nread == -1) exit(EXIT_FAILURE);
+unsigned char _getch()
+{
+	int nread;
+	unsigned char c;
+	while ((nread = read(STDIN_FILENO, &c, 1)) == 0);
+	if (nread == -1) exit(EXIT_FAILURE);
 
-		return c;
-	}
+	return c;
+}
 #endif
