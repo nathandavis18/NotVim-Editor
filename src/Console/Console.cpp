@@ -37,7 +37,7 @@ SOFTWARE.
 #include <sys/ioctl.h>
 #include <signal.h>
 #endif
-#define NuttyVersion "0.1a"
+#define NotVimVersion "0.1a"
 
 /// <summary>
 /// Construct the window
@@ -85,7 +85,7 @@ void Console::refreshScreen()
 		{
 			if (mWindow->fileRows.size() == 0 && y == mWindow->rows / 3) //If the file is empty and the current row is at 1/3 height (good display position)
 			{
-				std::string welcome = std::format("Nutty Editor -- version {}\x1b[0K\r\n", NuttyVersion);
+				std::string welcome = std::format("NotVim Editor -- version {}\x1b[0K\r\n", NotVimVersion);
 				size_t padding = (mWindow->cols - welcome.length()) / 2;
 				if (padding > 0)
 				{

@@ -52,7 +52,6 @@ namespace InputHandler
 			Console::enableEditMode();
 			break;
 		case ':':
-			std::cout << "Here";
 			Console::disableRawInput();
 			Console::enableCommandMode();
 			std::cout << ":";
