@@ -5,11 +5,11 @@
 #ifdef _WIN32
 #include <conio.h>
 #elif defined(__linux__) || defined(__APPLE__)
-char _getch();
+uint8_t _getch();
 #endif
 
 using KeyActions::KeyAction;
-#define sci(KeyAction) static_cast<int>(KeyAction)
+#define sci(KeyAction) static_cast<uint8_t>(KeyAction)
 
 namespace InputHandler
 {
@@ -71,36 +71,17 @@ namespace InputHandler
 	}
 	void handleInput()
 	{
-		uint8_t inputCount = 0;
-		int input = _getch();
+		uint8_t input = _getch();
+		std::cout << std::to_string(static_cast<uint8_t>(input)); exit(0);
 #ifdef _WIN32
 		if (input == functionKeyCode)
 		{
-			int _ = _getch(); //Ignore the function key specifier value
+			uint8_t _ = _getch(); //Ignore the function key specifier value
 			return; //Don't do anything if a function key (F1, F2, etc.) is pressed
 		}
 		if (input == specialKeyCode)
 		{
 			input = _getch();
-			switch (input)
-			{
-			case sci(KeyAction::ArrowLeft):
-			case sci(KeyAction::ArrowRight):
-			case sci(KeyAction::ArrowUp):
-			case sci(KeyAction::ArrowDown):
-				Console::moveCursor(input);
-				break;
-			case sci(KeyAction::Delete):
-				Console::deleteChar(input);
-				break;
-			case sci(KeyAction::CtrlArrowDown):
-			case sci(KeyAction::CtrlArrowUp):
-				Console::shiftRowOffset(input);
-				break;
-			default:
-				std::cout << "Why are we here";
-				break;
-			}
 		}
 #endif
 		if (input == sci(KeyAction::Esc))
@@ -113,7 +94,6 @@ namespace InputHandler
 			{
 			case sci(KeyAction::Delete):
 			case sci(KeyAction::Backspace):
-				std::cout << "Backspace"; exit(0);
 				Console::deleteChar(input);
 				break;
 			case sci(KeyAction::ArrowDown):
@@ -122,13 +102,14 @@ namespace InputHandler
 			case sci(KeyAction::ArrowRight):
 				Console::moveCursor(input);
 				break;
-
+			case sci(KeyAction::CtrlArrowDown):
+			case sci(KeyAction::CtrlArrowUp):
+				Console::shiftRowOffset(input);
+				break;
 			case sci(KeyAction::Enter):
-				std::cout << "Enter"; exit(0);
 				Console::addRow();
 				break;
 			default:
-				std::cout << std::to_string(static_cast<int>(input)); exit(0);
 				Console::insertChar(input);
 				break;
 			}
@@ -137,9 +118,9 @@ namespace InputHandler
 }
 
 #if defined(__linux__) || defined(__APPLE__)
-char _getch()
+uint8_t _getch()
 {
-	int nread;
+	uint8_t nread;
 	char c;
 	while ((nread = read(STDIN_FILENO, &c, 1)) == 0);
 	if (nread == -1) exit(EXIT_FAILURE);
