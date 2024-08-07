@@ -17,7 +17,7 @@ namespace InputHandler
 	static constexpr bool functionKeyCode = 0;
 	void doCommand()
 	{
-		char input = _getch();
+		unsigned char input = _getch();
 		std::string command;
 		switch (input)
 		{
@@ -72,10 +72,10 @@ namespace InputHandler
 	void handleInput()
 	{
 		uint8_t inputCount = 0;
-		char input = _getch();
+		unsigned char input = _getch();
 		if (input == functionKeyCode)
 		{
-			char _ = _getch(); //Ignore the function key specifier value
+			unsigned char _ = _getch(); //Ignore the function key specifier value
 			return; //Don't do anything if a function key (F1, F2, etc.) is pressed
 		}
 		if (input == specialKeyCode)
