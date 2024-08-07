@@ -73,7 +73,6 @@ namespace InputHandler
 	{
 		uint8_t inputCount = 0;
 		char input = _getch();
-		std::cout << input; exit(0);
 		if (input == functionKeyCode)
 		{
 			char _ = _getch(); //Ignore the function key specifier value
