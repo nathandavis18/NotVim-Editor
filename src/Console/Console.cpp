@@ -18,8 +18,9 @@
 /// Construct the window
 /// </summary>
 /// <param name="fileName"></param>
-Console::Window::Window() : fileCursorX(0), fileCursorY(0), cols(0), rows(0), renderedCursorX(0), renderedCursorY(0), 
-	rowOffset(0), colOffset(0), dirty(false), rawModeEnabled(false), statusMessage("Test Status Message Length go BRR"), fileRows(FileHandler::rows()), syntax(nullptr) {}
+Console::Window::Window() : fileCursorX(0), fileCursorY(0), cols(0), rows(0), renderedCursorX(0), renderedCursorY(0),
+rowOffset(0), colOffset(0), dirty(false), rawModeEnabled(false), statusMessage("Test Status Message Length go BRR"), fileRows(FileHandler::rows()), syntax(nullptr)
+{}
 
 
 /// <summary>
@@ -115,7 +116,7 @@ void Console::refreshScreen()
 	status = std::format("{} - {} lines {}", FileHandler::fileName(), mWindow->fileRows.size(), mWindow->dirty ? "(modified)" : "");
 	if (mMode == Mode::EditMode)
 	{
-		rStatus = std::format("actual row {} actual col {} row {}/{} col {}", mWindow->fileCursorY + 1, mWindow->fileCursorX + 1, 
+		rStatus = std::format("actual row {} actual col {} row {}/{} col {}", mWindow->fileCursorY + 1, mWindow->fileCursorX + 1,
 			mWindow->rowOffset + mWindow->renderedCursorY + 1, mWindow->fileRows.size(), mWindow->colOffset + mWindow->renderedCursorX + 1);
 		modeToDisplay = "EDIT";
 	}
@@ -146,7 +147,7 @@ void Console::refreshScreen()
 		}
 	}
 	statusLength += modeToDisplay.length();
-		
+
 	while (statusLength < mWindow->cols)
 	{
 		if (mWindow->cols - statusLength == rStatus.length())
@@ -229,7 +230,7 @@ void Console::moveCursor(const char key)
 		}
 
 		++mWindow->fileCursorY;
-		if(mWindow->fileCursorX > mWindow->fileRows.at(mWindow->fileCursorY).line.length())
+		if (mWindow->fileCursorX > mWindow->fileRows.at(mWindow->fileCursorY).line.length())
 		{
 			mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
 		}
@@ -325,7 +326,7 @@ void Console::addRow()
 void Console::insertChar(const char c)
 {
 	FileHandler::Row& row = mWindow->fileRows.at(mWindow->fileCursorY);
-		
+
 	row.line.insert(row.line.begin() + mWindow->fileCursorX, c);
 	++mWindow->fileCursorX;
 	mWindow->dirty = true;
@@ -510,9 +511,9 @@ size_t Console::addRenderedCursorTabs(const FileHandler::Row& row)
 //=================================================================== OS-SPECIFIC FUNCTIONS =============================================================================\\
 
 #ifdef _WIN32
-	DWORD defaultMode;
+DWORD defaultMode;
 #elif defined(__linux__) || defined(__APPLE__)
-	termios defaultMode;
+termios defaultMode;
 #endif
 
 /// <summary>
@@ -585,7 +586,7 @@ bool Console::setWindowSize()
 			if (buf[i] == 'R') break;
 			++i;
 		}
-		
+
 		if (buf[0] != static_cast<char>(KeyActions::KeyAction::Esc) || buf[1] != '[')
 		{
 			std::cerr << "Error getting window size";
@@ -632,7 +633,8 @@ bool Console::enableRawInput()
 	raw.c_oflag &= ~(OPOST);
 	raw.c_cflag |= (CS8);
 	raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-	raw.c_cc[VMIN] = 1;
+	raw.c_cc[VMIN] = 0;
+	raw.c_cc[VTIME] = 1;
 
 	if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) < 0)
 	{
@@ -642,7 +644,7 @@ bool Console::enableRawInput()
 	{
 		isEnabled = true;
 	}
-	
+
 #endif
 
 	atexit(Console::disableRawInput);

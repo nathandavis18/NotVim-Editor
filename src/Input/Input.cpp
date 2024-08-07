@@ -17,7 +17,7 @@ namespace InputHandler
 	static constexpr bool functionKeyCode = 0;
 	void doCommand()
 	{
-		char input = std::cin.get();
+		uint8_t input = _getch();
 		std::string command;
 		switch (input)
 		{
@@ -121,11 +121,12 @@ namespace InputHandler
 uint8_t _getch()
 {
 	uint8_t nread;
-	char c;
+	uint8_t c;
 	while ((nread = read(STDIN_FILENO, &c, 1)) == 0);
 	if (nread == -1) exit(EXIT_FAILURE);
 
-	std::cout << c; exit(0);
+	//std::cout << std::to_string(c); exit(0);
+
 	while (true)
 	{
 		switch (c)
@@ -133,18 +134,30 @@ uint8_t _getch()
 		case sci(KeyAction::Esc):
 			char seq[3];
 			if (read(STDIN_FILENO, seq, 1) == 0) return sci(KeyAction::Esc);
+			//std::cout << seq; exit(0);
 			if (read(STDIN_FILENO, seq + 1, 1) == 0) return sci(KeyAction::Esc);
+			//std::cout << seq; exit(0);
 
 			if (seq[0] == '[')
 			{
-				if (read(STDIN_FILENO, seq + 2, 1) == 0) return sci(KeyAction::Esc);
-				if (seq[2] == '~')
+				if (read(STDIN_FILENO, seq + 2, 1) > 0)
 				{
-					switch (seq[1])
+					//std::cout << seq; exit(0);
+					if (seq[2] == '~')
 					{
-					case '3': return sci(KeyAction::Delete);
-					case '5': return sci(KeyAction::PageUp);
-					case '6': return sci(KeyAction::PageDown);
+						switch (seq[1])
+						{
+						case '3': return sci(KeyAction::Delete);
+						case '5': return sci(KeyAction::PageUp);
+						case '6': return sci(KeyAction::PageDown);
+						}
+					}
+					else if (seq[2] == ';')
+					{
+						switch (seq[1])
+						{
+						case '3': return sci(KeyAction::CtrlDelete);
+						}
 					}
 				}
 				else
