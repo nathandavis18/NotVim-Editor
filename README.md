@@ -4,4 +4,5 @@ A custom, 0 dependencies, cross-platform VIM-like console-based text editor. Tes
 
 ### Demo
 
-![2024-08-0711-59-17-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/fdaa1764-4d3a-4841-bca7-1dac4d28a7e9)
+![NVE demo](https://github.com/user-attachments/assets/87a79a56-9151-4e79-af1d-8ef54c9c7c4a)
+
