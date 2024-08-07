@@ -122,7 +122,7 @@ namespace InputHandler
 						input = _getch();
 						switch (input)
 						{
-						case '3': Console::deleteChar(sci(KeyAction::Delete); return;
+						case '3': Console::deleteChar(sci(KeyAction::Delete)); return;
 						case '5': return; //sci(KeyAction::PageUp);
 						case '6': return; //sci(KeyAction::PageDown);
 						}
