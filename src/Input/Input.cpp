@@ -119,7 +119,8 @@ namespace InputHandler
 					if (input == '~')
 					{
 						//Dont have anything for this yet
-						switch (seq[1])
+						input = _getch();
+						switch (input)
 						{
 						case '3': Console::deleteChar(sci(KeyAction::Delete); return;
 						case '5': return; //sci(KeyAction::PageUp);
