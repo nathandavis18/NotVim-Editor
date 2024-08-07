@@ -1,6 +1,6 @@
 ﻿cmake_minimum_required (VERSION 3.12)
 
-project ("TextEditor")
+project ("nve")
 
 set(SOURCES
 	"src/Input/Input.cpp"
@@ -17,7 +17,7 @@ set (HEADERS
 	"src/Input/Input.hpp"
 )
 
-add_executable (TextEditor ${SOURCES} ${HEADERS})
+add_executable (nve ${SOURCES} ${HEADERS})
 
- set_property(TARGET TextEditor PROPERTY CXX_STANDARD 20)
+ set_property(TARGET nve PROPERTY CXX_STANDARD 20)
 

@@ -1,3 +1,27 @@
+/**
+* MIT License
+
+Copyright (c) 2024 Nathan Davis
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
 #include "Console.hpp"
 #include "../KeyActions/KeyActions.hh"
 
@@ -20,7 +44,7 @@
 /// </summary>
 /// <param name="fileName"></param>
 Console::Window::Window() : fileCursorX(0), fileCursorY(0), cols(0), rows(0), renderedCursorX(0), renderedCursorY(0),
-rowOffset(0), colOffset(0), dirty(false), rawModeEnabled(false), statusMessage("Test Status Message Length go BRR"), fileRows(FileHandler::rows()), syntax(nullptr)
+rowOffset(0), colOffset(0), dirty(false), rawModeEnabled(false), fileRows(FileHandler::loadFileContents()), syntax(nullptr)
 {}
 
 
@@ -46,7 +70,6 @@ Mode& Console::mode(Mode m)
 /// <param name="mode"></param>
 void Console::refreshScreen()
 {
-	setWindowSize();
 	const char* emptyRowCharacter = "~";
 
 	if (mWindow->fileRows.size() > 0 && mMode != Mode::CommandMode) fixRenderedCursorPosition(mWindow->fileRows.at(mWindow->fileCursorY));
@@ -79,7 +102,7 @@ void Console::refreshScreen()
 			else
 			{
 				renderBuffer.append(emptyRowCharacter);
-				renderBuffer.append("\x1b[0K\r\n"); //Clear the rest of the row, perform carriage return, and move to next line
+				renderBuffer.append("\x1b[0K\r\n"); //Clear the rest of the row
 			}
 			continue;
 		}
@@ -91,8 +114,8 @@ void Console::refreshScreen()
 			replaceRenderedStringTabs(row.renderedLine); //Must do this before so information can be displayed properly
 		}
 
-		//Set the string length to render to the lesser of the viewport and the line length.
-		uint16_t renderedLength = (row.renderedLine.length() - mWindow->colOffset) > mWindow->cols ? mWindow->cols : row.renderedLine.length();
+		//Set the render string length to the lesser of the terminal width and the line length.
+		const size_t renderedLength = (row.renderedLine.length() - mWindow->colOffset) > mWindow->cols ? mWindow->cols : row.renderedLine.length();
 		if (renderedLength > 0)
 		{
 			if (mWindow->colOffset < row.renderedLine.length())
@@ -106,19 +129,18 @@ void Console::refreshScreen()
 				row.renderedLine.clear();
 			}
 		}
-		renderBuffer.append("\x1b[39m");
+		renderBuffer.append("\x1b[39m"); //Set default color
 		renderBuffer.append("\x1b[0K\r\n");
 	}
 
 	renderBuffer.append("\x1b[0K");
-	renderBuffer.append("\x1b[7m");
+	renderBuffer.append("\x1b[7m"); //Set to inverse color mode (white background dark text) for status row
 
 	std::string status, rStatus, modeToDisplay;
 	status = std::format("{} - {} lines {}", FileHandler::fileName(), mWindow->fileRows.size(), mWindow->dirty ? "(modified)" : "");
 	if (mMode == Mode::EditMode)
 	{
-		rStatus = std::format("actual row {} actual col {} row {}/{} col {}", mWindow->fileCursorY + 1, mWindow->fileCursorX + 1,
-			mWindow->rowOffset + mWindow->renderedCursorY + 1, mWindow->fileRows.size(), mWindow->colOffset + mWindow->renderedCursorX + 1);
+		rStatus = std::format("row {}/{} col {}", mWindow->rowOffset + mWindow->renderedCursorY + 1, mWindow->fileRows.size(), mWindow->colOffset + mWindow->renderedCursorX + 1);
 		modeToDisplay = "EDIT";
 	}
 	else if (mMode == Mode::CommandMode)
@@ -163,26 +185,25 @@ void Console::refreshScreen()
 		}
 	}
 
-	renderBuffer.append("\x1b[0m\r\n");
+	renderBuffer.append("\x1b[0m\r\n"); //Set to default mode
 	renderBuffer.append("\x1b[0K");
 
-	std::string cursorPosition = std::format("\x1b[{};{}f", mWindow->renderedCursorY + 1, mWindow->renderedCursorX + 1); //Show the rendered cursor position, offset by 1 for displaying
+	std::string cursorPosition = std::format("\x1b[{};{}f", mWindow->renderedCursorY + 1, mWindow->renderedCursorX + 1); //Move the cursor to this position
 	renderBuffer.append(cursorPosition);
-	//renderBuffer.append(cursorPosition);
-	renderBuffer.append("\x1b[?25h");
+	renderBuffer.append("\x1b[?25h"); //Show cursor
 	std::cout << renderBuffer;
-	std::cout.flush();
+	std::cout.flush(); //Finally, flush the buffer so everything displays properly
 }
 
 /// <summary>
 /// Moves the file cursor through the file rows depending on which key is pressed
 /// </summary>
 /// <param name="key">The arrow key pressed</param>
-void Console::moveCursor(const char key)
+void Console::moveCursor(const uint8_t key)
 {
 	switch (key)
 	{
-	case static_cast<char>(KeyActions::KeyAction::ArrowLeft):
+	case static_cast<uint8_t>(KeyActions::KeyAction::ArrowLeft):
 		if (mWindow->fileCursorX == 0 && mWindow->fileCursorY == 0) return;
 
 		if (mWindow->fileCursorX == 0)
@@ -195,7 +216,7 @@ void Console::moveCursor(const char key)
 			--mWindow->fileCursorX;
 		}
 		break;
-	case static_cast<char>(KeyActions::KeyAction::ArrowRight):
+	case static_cast<uint8_t>(KeyActions::KeyAction::ArrowRight):
 		if (mWindow->fileCursorY == mWindow->fileRows.size() - 1)
 		{
 			if (mWindow->fileCursorX == mWindow->fileRows.at(mWindow->fileCursorY).line.length()) return;
@@ -211,7 +232,7 @@ void Console::moveCursor(const char key)
 			++mWindow->fileCursorX;
 		}
 		break;
-	case static_cast<char>(KeyActions::KeyAction::ArrowUp):
+	case static_cast<uint8_t>(KeyActions::KeyAction::ArrowUp):
 		if (mWindow->fileCursorY == 0)
 		{
 			mWindow->fileCursorX = 0;
@@ -225,7 +246,7 @@ void Console::moveCursor(const char key)
 			mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
 		}
 		break;
-	case static_cast<char>(KeyActions::KeyAction::ArrowDown):
+	case static_cast<uint8_t>(KeyActions::KeyAction::ArrowDown):
 		if (mWindow->fileCursorY == mWindow->fileRows.size() - 1)
 		{
 			mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
@@ -241,57 +262,33 @@ void Console::moveCursor(const char key)
 	}
 }
 
+
 /// <summary>
-/// Deletes a character behind/ahead of the cursor depending on key pressed
+/// When CTRL-ArrowUp / CTRL-ArrowDown is pressed, shift the viewable screen area up/down one if possible
 /// </summary>
 /// <param name="key"></param>
-void Console::deleteChar(const char key)
+void Console::shiftRowOffset(const uint8_t key)
 {
-	if (mWindow->fileCursorY >= mWindow->fileRows.size()) return;
-	FileHandler::Row& row = mWindow->fileRows.at(mWindow->fileCursorY);
-	if (key == static_cast<char>(KeyActions::KeyAction::Backspace))
+	if (key == static_cast<uint8_t>(KeyActions::KeyAction::CtrlArrowDown))
 	{
-		if (mWindow->fileCursorX == 0 && mWindow->fileCursorY == 0) return;
+		if (mWindow->rowOffset == mWindow->fileRows.size() - 1) return; //This is as far as the screen can be moved down
 
-		if (mWindow->fileCursorX == 0)
+		++mWindow->rowOffset;
+		if (mWindow->fileCursorY < mWindow->fileRows.size() && mWindow->renderedCursorY == 0) //Move the file cursor if the rendered cursor is at the top of the screen
 		{
-			mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY - 1).line.length();
-			mWindow->fileRows.at(mWindow->fileCursorY - 1).line.append(row.line);
-			deleteRow(mWindow->fileCursorY);
+			++mWindow->fileCursorY;
+		}
+	}
+	else if (key == static_cast<uint8_t>(KeyActions::KeyAction::CtrlArrowUp))
+	{
+		if (mWindow->rowOffset == 0) return; //A negative row offset would wrap and break the viewport so don't allow it to go negative
+
+		--mWindow->rowOffset;
+		if (mWindow->renderedCursorY == mWindow->rows - 1) //Move the file cursor if the rendered cursor is at the bottom of the screen
+		{
 			--mWindow->fileCursorY;
 		}
-		else
-		{
-			row.line.erase(row.line.begin() + mWindow->fileCursorX - 1);
-			--mWindow->fileCursorX;
-		}
 	}
-	else if (key == static_cast<char>(KeyActions::KeyAction::Delete))
-	{
-		if (mWindow->fileCursorY == mWindow->fileRows.size() - 1 && mWindow->fileCursorX == row.line.length()) return;
-
-		if (mWindow->fileCursorX == row.line.length())
-		{
-			row.line.append(mWindow->fileRows.at(mWindow->fileCursorY + 1).line);
-			deleteRow(mWindow->fileCursorY + 1);
-		}
-		else
-		{
-			row.line.erase(row.line.begin() + mWindow->fileCursorX);
-		}
-	}
-	mWindow->dirty = true;
-}
-
-/// <summary>
-/// Deletes a row when the last character in the row is removed
-/// </summary>
-/// <param name="rowNum"></param>
-void Console::deleteRow(const size_t rowNum)
-{
-	if (rowNum > mWindow->fileRows.size()) return;
-	mWindow->fileRows.erase(mWindow->fileRows.begin() + rowNum);
-	mWindow->dirty = true;
 }
 
 /// <summary>
@@ -323,10 +320,51 @@ void Console::addRow()
 }
 
 /// <summary>
-/// Inserts a given character at the current position and moves the cursor forward
+/// Deletes a uint8_tacter behind/ahead of the cursor depending on key pressed
+/// </summary>
+/// <param name="key"></param>
+void Console::deleteChar(const uint8_t key)
+{
+	FileHandler::Row& row = mWindow->fileRows.at(mWindow->fileCursorY);
+	if (key == static_cast<uint8_t>(KeyActions::KeyAction::Backspace))
+	{
+		if (mWindow->fileCursorX == 0 && mWindow->fileCursorY == 0) return;
+
+		if (mWindow->fileCursorX == 0)
+		{
+			mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY - 1).line.length();
+			mWindow->fileRows.at(mWindow->fileCursorY - 1).line.append(row.line);
+			deleteRow(mWindow->fileCursorY);
+			--mWindow->fileCursorY;
+		}
+		else
+		{
+			row.line.erase(row.line.begin() + mWindow->fileCursorX - 1);
+			--mWindow->fileCursorX;
+		}
+	}
+	else if (key == static_cast<uint8_t>(KeyActions::KeyAction::Delete))
+	{
+		if (mWindow->fileCursorY == mWindow->fileRows.size() - 1 && mWindow->fileCursorX == row.line.length()) return;
+
+		if (mWindow->fileCursorX == row.line.length())
+		{
+			row.line.append(mWindow->fileRows.at(mWindow->fileCursorY + 1).line);
+			deleteRow(mWindow->fileCursorY + 1);
+		}
+		else
+		{
+			row.line.erase(row.line.begin() + mWindow->fileCursorX);
+		}
+	}
+	mWindow->dirty = true;
+}
+
+/// <summary>
+/// Inserts a given uint8_tacter at the current position and moves the cursor forward
 /// </summary>
 /// <param name="c"></param>
-void Console::insertChar(const char c)
+void Console::insertChar(const uint8_t c)
 {
 	FileHandler::Row& row = mWindow->fileRows.at(mWindow->fileCursorY);
 
@@ -389,31 +427,14 @@ void Console::enableEditMode()
 }
 
 /// <summary>
-/// When CTRL-ArrowUp / CTRL-ArrowDown is pressed, shift the viewable screen area up/down one if possible
+/// Deletes a row when the last uint8_tacter in the row is removed
 /// </summary>
-/// <param name="key"></param>
-void Console::shiftRowOffset(const char key)
+/// <param name="rowNum"></param>
+void Console::deleteRow(const size_t rowNum)
 {
-	if (key == static_cast<char>(KeyActions::KeyAction::CtrlArrowDown))
-	{
-		if (mWindow->rowOffset == mWindow->fileRows.size() - 1) return; //This is as far as the screen can be moved down
-
-		++mWindow->rowOffset;
-		if (mWindow->fileCursorY < mWindow->fileRows.size() && mWindow->renderedCursorY == 0) //Move the file cursor if the rendered cursor is at the top of the screen
-		{
-			++mWindow->fileCursorY;
-		}
-	}
-	else if (key == static_cast<char>(KeyActions::KeyAction::CtrlArrowUp))
-	{
-		if (mWindow->rowOffset == 0) return; //A negative row offset would wrap and break the viewport so don't allow it to go negative
-
-		--mWindow->rowOffset;
-		if (mWindow->renderedCursorY == mWindow->rows - 1) //Move the file cursor if the rendered cursor is at the bottom of the screen
-		{
-			--mWindow->fileCursorY;
-		}
-	}
+	if (rowNum > mWindow->fileRows.size()) return;
+	mWindow->fileRows.erase(mWindow->fileRows.begin() + rowNum);
+	mWindow->dirty = true;
 }
 
 /// <summary>
@@ -443,12 +464,17 @@ void Console::fixRenderedCursorPosition(const FileHandler::Row& row)
 		}
 	}
 
-	//Fixing rendered Y/Row position -- much easier to fix since there are no tabs to replace
-	mWindow->renderedCursorY = mWindow->fileCursorY - mWindow->rowOffset;
-	while (mWindow->fileCursorY - mWindow->rowOffset >= mWindow->rows)
+	//Fixing rendered Y/Row position
+	while (mWindow->fileCursorY - mWindow->rowOffset >= mWindow->rows && mWindow->fileCursorY >= mWindow->rowOffset)
 	{
 		++mWindow->rowOffset;
 	}
+	while (mWindow->fileCursorY < mWindow->rowOffset)
+	{
+		--mWindow->rowOffset;
+	}
+	mWindow->renderedCursorY = mWindow->fileCursorY - mWindow->rowOffset;
+
 	if (mWindow->renderedCursorY == mWindow->rows)
 	{
 		--mWindow->renderedCursorY;
@@ -467,7 +493,7 @@ void Console::replaceRenderedStringTabs(std::string& renderedLine)
 	for (size_t i = 0; i < lineLength; ++i)
 	{
 		if (i >= renderedLine.length()) return;
-		if (renderedLine[i] != static_cast<char>(KeyActions::KeyAction::Tab)) continue;
+		if (renderedLine[i] != static_cast<uint8_t>(KeyActions::KeyAction::Tab)) continue;
 
 		renderedLine[i] = ' ';
 		uint8_t t = 7 - (i % 8);
@@ -504,7 +530,7 @@ size_t Console::addRenderedCursorTabs(const FileHandler::Row& row)
 	{
 		if (i > row.line.length()) return 0;
 
-		if (row.line[i] != static_cast<char>(KeyActions::KeyAction::Tab)) continue;
+		if (row.line[i] != static_cast<uint8_t>(KeyActions::KeyAction::Tab)) continue;
 
 		spacesToAdd += 7 - ((i + spacesToAdd) % 8);
 	}
@@ -526,8 +552,6 @@ static termios defaultMode;
 void Console::initConsole(const std::string_view& fName)
 {
 	FileHandler::fileName(fName);
-	FileHandler::loadFileContents();
-	FileHandler::loadRows();
 	SyntaxHighlight::initSyntax(fName);
 
 	mWindow = std::make_unique<Window>(Window());
@@ -562,8 +586,8 @@ void Console::initConsole(const std::string_view& fName)
 /// <returns>True if size has changed, false otherwise</returns>
 bool Console::setWindowSize()
 {
-	uint16_t prevRows = mWindow->rows;
-	uint16_t prevCols = mWindow->cols;
+	const size_t prevRows = mWindow->rows;
+	const size_t prevCols = mWindow->cols;
 #ifdef _WIN32
 	CONSOLE_SCREEN_BUFFER_INFO screenInfo;
 	if (!GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &screenInfo))
@@ -571,8 +595,8 @@ bool Console::setWindowSize()
 		std::cerr << "Error getting console screen buffer info";
 		exit(EXIT_FAILURE);
 	}
-	mWindow->rows = screenInfo.srWindow.Bottom - screenInfo.srWindow.Top + 1;
-	mWindow->cols = screenInfo.srWindow.Right - screenInfo.srWindow.Left + 1;
+	mWindow->rows = static_cast<size_t>(screenInfo.srWindow.Bottom - screenInfo.srWindow.Top) + 1;
+	mWindow->cols = static_cast<size_t>(screenInfo.srWindow.Right - screenInfo.srWindow.Left) + 1;
 
 #elif defined(__linux__) || defined(__APPLE__)
 	winsize ws;
@@ -591,7 +615,7 @@ bool Console::setWindowSize()
 			++i;
 		}
 
-		if (buf[0] != static_cast<char>(KeyActions::KeyAction::Esc) || buf[1] != '[')
+		if (buf[0] != static_cast<uint8_t>(KeyActions::KeyAction::Esc) || buf[1] != '[')
 		{
 			std::cerr << "Error getting window size";
 			exit(EXIT_FAILURE);
