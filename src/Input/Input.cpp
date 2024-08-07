@@ -168,9 +168,8 @@ uint8_t _getch()
 
 			if (seq[0] == '[')
 			{
-				if (read(STDIN_FILENO, seq + 2, 1) > 0)
+				if (read(STDIN_FILENO, seq + 2, 1) != 0)
 				{
-					std::cout << seq; exit(0);
 					if (seq[2] == '~')
 					{
 						switch (seq[1])
@@ -184,6 +183,20 @@ uint8_t _getch()
 					{
 						switch (seq[1])
 						{
+						case '1':
+							if (read(STDIN_FILENO, seq, 1) == 0) return static_cast<uint8_t>(KeyAction::Esc);
+							if (read(STDIN_FILENO, seq + 1, 1) == 0) return static_cast<uint8_t>(KeyAction::Esc);
+							if (seq[0] == '5')
+							{
+								switch (seq[1])
+								{
+								case 'A': return static_cast<uint8_t>(KeyAction::CtrlArrowUp);
+								case 'B': return static_cast<uint8_t>(KeyAction::CtrlArrowDown);
+								case 'C': return static_cast<uint8_t>(KeyAction::CtrlArrowRight);
+								case 'D': return static_cast<uint8_t>(KeyAction::CtrlArrowLeft);
+								}
+							}
+
 						case '3': return static_cast<uint8_t>(KeyAction::CtrlDelete);
 						case '5': return static_cast<uint8_t>(KeyAction::CtrlPageUp);
 						case '6': return static_cast<uint8_t>(KeyAction::CtrlPageDown);
