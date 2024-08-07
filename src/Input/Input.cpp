@@ -73,6 +73,7 @@ namespace InputHandler
 	{
 		uint8_t inputCount = 0;
 		int input = _getch();
+#ifdef _WIN32
 		if (input == functionKeyCode)
 		{
 			int _ = _getch(); //Ignore the function key specifier value
@@ -101,57 +102,27 @@ namespace InputHandler
 				break;
 			}
 		}
-		else if (input == sci(KeyAction::Esc))
-		{
-#if defined(__linux__) || defined(__APPLE__)
-			input = _getch();
-			if (input == '[')
-			{
-				input = _getch();
-				if (input >= '0' && input <= '9')
-				{
-					if (read(STDIN_FILENO, &input, 1) == 0)
-					{
-						Console::mode(Mode::ReadMode);
-						return;
-					}
-					if (input == '~')
-					{
-						//Dont have anything for this yet
-						input = _getch();
-						switch (input)
-						{
-						case '3': Console::deleteChar(sci(KeyAction::Delete)); return;
-						case '5': return; //sci(KeyAction::PageUp);
-						case '6': return; //sci(KeyAction::PageDown);
-						}
-					}
-				}
-				else
-				{
-					switch (input)
-					{
-					case 'A': Console::moveCursor(sci(KeyAction::ArrowUp)); return;
-					case 'B': Console::moveCursor(sci(KeyAction::ArrowDown)); return;
-					case 'C': Console::moveCursor(sci(KeyAction::ArrowRight)); return;
-					case 'D': Console::moveCursor(sci(KeyAction::ArrowLeft)); return;
-					case 'H': return; //sci(KeyAction::Home);
-					case 'F': return; //sci(KeyAction::End);
-					}
-				}
-			}
-#else
-			Console::mode(Mode::ReadMode);
 #endif
+		if (input == sci(KeyAction::Esc))
+		{
+			Console::mode(Mode::ReadMode);
 		}
 		else
 		{
 			switch (input)
 			{
+			case sci(KeyAction::Delete):
 			case sci(KeyAction::Backspace):
 				std::cout << "Backspace"; exit(0);
 				Console::deleteChar(input);
 				break;
+			case sci(KeyAction::ArrowDown):
+			case sci(KeyAction::ArrowUp):
+			case sci(KeyAction::ArrowLeft):
+			case sci(KeyAction::ArrowRight):
+				Console::moveCursor(input);
+				break;
+
 			case sci(KeyAction::Enter):
 				std::cout << "Enter"; exit(0);
 				Console::addRow();
@@ -173,6 +144,54 @@ char _getch()
 	while ((nread = read(STDIN_FILENO, &c, 1)) == 0);
 	if (nread == -1) exit(EXIT_FAILURE);
 
-	return c;
+	while (true)
+	{
+		switch (c)
+		{
+			case sci(KeyAction::Esc)
+			{
+				char seq[3];
+				if (read(STDIN_FILENO, seq, 1) == 0) return sci(KeyAction::Esc);
+				if (read(STDIN_FILENO, seq + 1, 1) == 0) return sci(KeyAction::Esc);
+
+				if (seq[0] == '[')
+				{
+					if (read(STDIN_FILENO, seq + 2, 1) == 0) return sci(KeyAction::Esc);
+					if (seq[2] == '~')
+					{
+						switch (seq[1])
+						{
+						case '3': return sci(KeyAction::Delete);
+						case '5': return sci(KeyAction::PageUp);
+						case '6': return sci(KeyAction::PageDown);
+						}
+					}
+					else
+					{
+						switch (seq[1])
+						{
+						case 'A': return sci(KeyAction::ArrowUp);
+						case 'B': return sci(KeyAction::ArrowDown);
+						case 'C': return sci(KeyAction::ArrowRight);
+						case 'D': return sci(KeyAction::ArrowLeft);
+						case 'H': return sci(KeyAction::Home);
+						case 'F': return sci(KeyAction::End);
+						}
+					}
+				}
+				else if (seq[0] == 'O')
+				{
+					switch (seq[1])
+					{
+					case 'H': return sci(KeyAction::Home);
+					case 'F': return sci(KeyAction::End);
+					}
+				}
+				break;
+			default:
+				return c;
+			}
+		}
+	}
 }
 #endif
