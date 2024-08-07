@@ -148,49 +148,47 @@ char _getch()
 	{
 		switch (c)
 		{
-			case sci(KeyAction::Esc)
-			{
-				char seq[3];
-				if (read(STDIN_FILENO, seq, 1) == 0) return sci(KeyAction::Esc);
-				if (read(STDIN_FILENO, seq + 1, 1) == 0) return sci(KeyAction::Esc);
+		case sci(KeyAction::Esc):
+			char seq[3];
+			if (read(STDIN_FILENO, seq, 1) == 0) return sci(KeyAction::Esc);
+			if (read(STDIN_FILENO, seq + 1, 1) == 0) return sci(KeyAction::Esc);
 
-				if (seq[0] == '[')
-				{
-					if (read(STDIN_FILENO, seq + 2, 1) == 0) return sci(KeyAction::Esc);
-					if (seq[2] == '~')
-					{
-						switch (seq[1])
-						{
-						case '3': return sci(KeyAction::Delete);
-						case '5': return sci(KeyAction::PageUp);
-						case '6': return sci(KeyAction::PageDown);
-						}
-					}
-					else
-					{
-						switch (seq[1])
-						{
-						case 'A': return sci(KeyAction::ArrowUp);
-						case 'B': return sci(KeyAction::ArrowDown);
-						case 'C': return sci(KeyAction::ArrowRight);
-						case 'D': return sci(KeyAction::ArrowLeft);
-						case 'H': return sci(KeyAction::Home);
-						case 'F': return sci(KeyAction::End);
-						}
-					}
-				}
-				else if (seq[0] == 'O')
+			if (seq[0] == '[')
+			{
+				if (read(STDIN_FILENO, seq + 2, 1) == 0) return sci(KeyAction::Esc);
+				if (seq[2] == '~')
 				{
 					switch (seq[1])
 					{
+					case '3': return sci(KeyAction::Delete);
+					case '5': return sci(KeyAction::PageUp);
+					case '6': return sci(KeyAction::PageDown);
+					}
+				}
+				else
+				{
+					switch (seq[1])
+					{
+					case 'A': return sci(KeyAction::ArrowUp);
+					case 'B': return sci(KeyAction::ArrowDown);
+					case 'C': return sci(KeyAction::ArrowRight);
+					case 'D': return sci(KeyAction::ArrowLeft);
 					case 'H': return sci(KeyAction::Home);
 					case 'F': return sci(KeyAction::End);
 					}
 				}
-				break;
-			default:
-				return c;
 			}
+			else if (seq[0] == 'O')
+			{
+				switch (seq[1])
+				{
+				case 'H': return sci(KeyAction::Home);
+				case 'F': return sci(KeyAction::End);
+				}
+			}
+			break;
+		default:
+			return c;
 		}
 	}
 }
