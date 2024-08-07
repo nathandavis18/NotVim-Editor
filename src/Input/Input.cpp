@@ -79,7 +79,7 @@ namespace InputHandler
 			uint8_t _ = _getch(); //Ignore the function key specifier value
 			return; //Don't do anything if a function key (F1, F2, etc.) is pressed
 		}
-		if (input == specialKeyCode)
+		else if (input == specialKeyCode)
 		{
 			input = _getch();
 		}
@@ -125,6 +125,7 @@ uint8_t _getch()
 	while ((nread = read(STDIN_FILENO, &c, 1)) == 0);
 	if (nread == -1) exit(EXIT_FAILURE);
 
+	std::cout << c; exit(0);
 	while (true)
 	{
 		switch (c)
