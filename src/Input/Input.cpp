@@ -157,7 +157,7 @@ namespace InputHandler
 				Console::addRow();
 				break;
 			default:
-				std::cout << "Other"; exit(0);
+				std::cout << std::to_string(static_cast<int>(input)); exit(0);
 				Console::insertChar(input);
 				break;
 			}
