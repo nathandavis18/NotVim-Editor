@@ -25,6 +25,8 @@ SOFTWARE.
 #pragma once
 #include <vector>
 #include <string>
+#include <cstdint> //uint8_t
+
 namespace SyntaxHighlight{
 	struct EditorSyntax
 	{
