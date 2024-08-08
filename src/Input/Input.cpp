@@ -108,35 +108,35 @@ namespace InputHandler
 			uint8_t _ = _getch(); //Ignore the function key specifier value
 			return; //Don't do anything if a function key (F1, F2, etc.) is pressed
 		}
-		else if (input == specialKeyCode)
+		else if (input == specialKeyCode) //This is the code to determine arrow key presses, delete, end, home, pageup/down
 		{
-			input = _getch();
+			input = _getch(); //Get the special key identifier
 		}
 #endif
-
-		if (input == static_cast<uint8_t>(KeyAction::Esc))
+		KeyAction key = static_cast<KeyAction>(input);
+		if (key == KeyAction::Esc)
 		{
 			Console::mode(Mode::ReadMode);
 		}
 		else
 		{
-			switch (input)
+			switch (key)
 			{
-			case static_cast<uint8_t>(KeyAction::Delete):
-			case static_cast<uint8_t>(KeyAction::Backspace):
-				Console::deleteChar(input);
+			case KeyAction::Delete:
+			case KeyAction::Backspace:
+				Console::deleteChar(key);
 				break;
-			case static_cast<uint8_t>(KeyAction::ArrowDown):
-			case static_cast<uint8_t>(KeyAction::ArrowUp):
-			case static_cast<uint8_t>(KeyAction::ArrowLeft):
-			case static_cast<uint8_t>(KeyAction::ArrowRight):
-				Console::moveCursor(input);
+			case KeyAction::ArrowDown:
+			case KeyAction::ArrowUp:
+			case KeyAction::ArrowLeft:
+			case KeyAction::ArrowRight:
+				Console::moveCursor(key);
 				break;
-			case static_cast<uint8_t>(KeyAction::CtrlArrowDown):
-			case static_cast<uint8_t>(KeyAction::CtrlArrowUp):
-				Console::shiftRowOffset(input);
+			case KeyAction::CtrlArrowDown:
+			case KeyAction::CtrlArrowUp:
+				Console::shiftRowOffset(key);
 				break;
-			case static_cast<uint8_t>(KeyAction::Enter):
+			case KeyAction::Enter:
 				Console::addRow();
 				break;
 			default:

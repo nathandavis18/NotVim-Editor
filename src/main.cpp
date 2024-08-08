@@ -44,6 +44,10 @@ void updateScreen() //Makes sure the screen stays up to date with the size
 
 int main(int argc, const char** argv)
 {
+#ifndef NDEBUG
+	argc = 2;
+	argv[1] = "test.cpp";
+#endif
 	if (argc != 2)
 	{
 		std::cerr << "ERROR: Usage: nve <filename>\n";

@@ -46,10 +46,10 @@ class Console
 public:
 	static Mode& mode(Mode = Mode::None);
 	static void refreshScreen();
-	static void moveCursor(const uint8_t key);
-	static void shiftRowOffset(const uint8_t key);
+	static void moveCursor(const KeyActions::KeyAction key);
+	static void shiftRowOffset(const KeyActions::KeyAction key);
 	static void addRow();
-	static void deleteChar(const uint8_t key);
+	static void deleteChar(const KeyActions::KeyAction key);
 	static void insertChar(const uint8_t c);
 	static bool isRawMode();
 	static bool isDirty();

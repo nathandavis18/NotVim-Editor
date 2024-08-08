@@ -199,11 +199,11 @@ void Console::refreshScreen()
 /// Moves the file cursor through the file rows depending on which key is pressed
 /// </summary>
 /// <param name="key">The arrow key pressed</param>
-void Console::moveCursor(const uint8_t key)
+void Console::moveCursor(const KeyActions::KeyAction key)
 {
 	switch (key)
 	{
-	case static_cast<uint8_t>(KeyActions::KeyAction::ArrowLeft):
+	case KeyActions::KeyAction::ArrowLeft:
 		if (mWindow->fileCursorX == 0 && mWindow->fileCursorY == 0) return;
 
 		if (mWindow->fileCursorX == 0)
@@ -216,7 +216,7 @@ void Console::moveCursor(const uint8_t key)
 			--mWindow->fileCursorX;
 		}
 		break;
-	case static_cast<uint8_t>(KeyActions::KeyAction::ArrowRight):
+	case KeyActions::KeyAction::ArrowRight:
 		if (mWindow->fileCursorY == mWindow->fileRows.size() - 1)
 		{
 			if (mWindow->fileCursorX == mWindow->fileRows.at(mWindow->fileCursorY).line.length()) return;
@@ -232,7 +232,7 @@ void Console::moveCursor(const uint8_t key)
 			++mWindow->fileCursorX;
 		}
 		break;
-	case static_cast<uint8_t>(KeyActions::KeyAction::ArrowUp):
+	case KeyActions::KeyAction::ArrowUp:
 		if (mWindow->fileCursorY == 0)
 		{
 			mWindow->fileCursorX = 0;
@@ -246,7 +246,7 @@ void Console::moveCursor(const uint8_t key)
 			mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
 		}
 		break;
-	case static_cast<uint8_t>(KeyActions::KeyAction::ArrowDown):
+	case KeyActions::KeyAction::ArrowDown:
 		if (mWindow->fileCursorY == mWindow->fileRows.size() - 1)
 		{
 			mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
@@ -267,26 +267,26 @@ void Console::moveCursor(const uint8_t key)
 /// When CTRL-ArrowUp / CTRL-ArrowDown is pressed, shift the viewable screen area up/down one if possible
 /// </summary>
 /// <param name="key"></param>
-void Console::shiftRowOffset(const uint8_t key)
+void Console::shiftRowOffset(const KeyActions::KeyAction key)
 {
-	if (key == static_cast<uint8_t>(KeyActions::KeyAction::CtrlArrowDown))
+	if (key == KeyActions::KeyAction::CtrlArrowDown)
 	{
 		if (mWindow->rowOffset == mWindow->fileRows.size() - 1) return; //This is as far as the screen can be moved down
 
 		++mWindow->rowOffset;
 		if (mWindow->fileCursorY < mWindow->fileRows.size() && mWindow->renderedCursorY == 0) //Move the file cursor if the rendered cursor is at the top of the screen
 		{
-			++mWindow->fileCursorY;
+			moveCursor(KeyActions::KeyAction::ArrowDown);
 		}
 	}
-	else if (key == static_cast<uint8_t>(KeyActions::KeyAction::CtrlArrowUp))
+	else if (key == KeyActions::KeyAction::CtrlArrowUp)
 	{
 		if (mWindow->rowOffset == 0) return; //A negative row offset would wrap and break the viewport so don't allow it to go negative
 
 		--mWindow->rowOffset;
 		if (mWindow->renderedCursorY == mWindow->rows - 1) //Move the file cursor if the rendered cursor is at the bottom of the screen
 		{
-			--mWindow->fileCursorY;
+			moveCursor(KeyActions::KeyAction::ArrowUp);
 		}
 	}
 }
@@ -323,10 +323,10 @@ void Console::addRow()
 /// Deletes a uint8_tacter behind/ahead of the cursor depending on key pressed
 /// </summary>
 /// <param name="key"></param>
-void Console::deleteChar(const uint8_t key)
+void Console::deleteChar(const KeyActions::KeyAction key)
 {
 	FileHandler::Row& row = mWindow->fileRows.at(mWindow->fileCursorY);
-	if (key == static_cast<uint8_t>(KeyActions::KeyAction::Backspace))
+	if (key == KeyActions::KeyAction::Backspace)
 	{
 		if (mWindow->fileCursorX == 0 && mWindow->fileCursorY == 0) return;
 
@@ -343,7 +343,7 @@ void Console::deleteChar(const uint8_t key)
 			--mWindow->fileCursorX;
 		}
 	}
-	else if (key == static_cast<uint8_t>(KeyActions::KeyAction::Delete))
+	else if (key == KeyActions::KeyAction::Delete)
 	{
 		if (mWindow->fileCursorY == mWindow->fileRows.size() - 1 && mWindow->fileCursorX == row.line.length()) return;
 
@@ -438,7 +438,7 @@ void Console::deleteRow(const size_t rowNum)
 }
 
 /// <summary>
-/// Fixes the rendered cursor and column offset positions
+/// Fixes the rendered cursor x/y, row and column offset positions
 /// </summary>
 /// <param name="window"></param>
 void Console::fixRenderedCursorPosition(const FileHandler::Row& row)
