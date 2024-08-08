@@ -1,6 +1,6 @@
 # NotVim Editor
 
-A custom, 0 dependencies, cross-platform VIM-like console-based text editor. Tested on Windows and Linux.
+A custom, 0 dependencies (yes, not even curses/ncurses), cross-platform VIM-like console-based text editor. Tested on Windows and Linux.
 <hr>
 
 ### Demo
@@ -53,6 +53,11 @@ This executable is a standalone executable, so you may also add this file to you
 
 
 <hr>
+
+### Contributing
+
+If you would like to contribute to this project, feel free to clone this repo, make a new branch and work on any changes you see necessary.
+If you come across any issues, feel free to make your own fix for it, or create an issue so I am aware of it and can fix it.
 
 #### UNTESTED ON OSX (macOS). 
  
