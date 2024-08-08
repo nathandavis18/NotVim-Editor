@@ -5,7 +5,7 @@ A custom, 0 dependencies, cross-platform VIM-like console-based text editor. Tes
 
 ### Demo
 
-![NVE demo](https://github.com/user-attachments/assets/87a79a56-9151-4e79-af1d-8ef54c9c7c4a)
+https://github.com/user-attachments/assets/cd7cde65-e561-4fa2-8a28-f8812397412d
 
 <hr>
 
