@@ -29,6 +29,7 @@ SOFTWARE.
 
 namespace InputHandler
 {
-	void handleInput();
-	void doCommand();
+	void handleInput(const uint16_t);
+	void doCommand(const uint16_t);
+	uint16_t getInput();
 }
