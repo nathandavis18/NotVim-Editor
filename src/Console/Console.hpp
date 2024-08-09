@@ -91,7 +91,7 @@ private:
 	static void fixRenderedCursorPosition(const FileHandler::Row&);
 	static void replaceRenderedStringTabs(std::string&);
 	static size_t addRenderedCursorTabs(const FileHandler::Row&);
-	static bool isSeparator(const uint8_t c);
+	static bool isSeparator(std::string& wordToCheck, const uint8_t currentChar);
 	static void setHighlight(const size_t rowNum);
 
 private:

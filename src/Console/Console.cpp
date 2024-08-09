@@ -576,9 +576,9 @@ void Console::setHighlight(const size_t startingRowNum)
 		const FileHandler::Row& row = mWindow->fileRows[r];
 		for (size_t i = 0; i <= row.renderedLine.length(); ++i)
 		{
-			if (!isSeparator(row.renderedLine[i]))
+			if (!isSeparator(currentWord, row.renderedLine[i]))
 			{
-				currentWord.push_back(row.renderedLine[i]);
+				if(row.renderedLine[i] != '\0') currentWord.push_back(row.renderedLine[i]);
 			}
 			else
 			{
@@ -624,7 +624,7 @@ void Console::setHighlight(const size_t startingRowNum)
 				{
 					if (s == currentWord)
 					{
-						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordBuiltInType, startingRowNum, i - currentWord.length(), currentWord.length());
+						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordBuiltInType, r, i - currentWord.length(), currentWord.length());
 						goto nextword;
 					}
 				}
@@ -632,7 +632,7 @@ void Console::setHighlight(const size_t startingRowNum)
 				{
 					if (s == currentWord)
 					{
-						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordLoop, startingRowNum, i - currentWord.length(), currentWord.length());
+						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordLoop, r, i - currentWord.length(), currentWord.length());
 						goto nextword;
 					}
 				}
@@ -640,7 +640,7 @@ void Console::setHighlight(const size_t startingRowNum)
 				{
 					if (s == currentWord)
 					{
-						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordClassType, startingRowNum, i - currentWord.length(), currentWord.length());
+						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordClassType, r, i - currentWord.length(), currentWord.length());
 						goto nextword;
 					}
 				}
@@ -648,7 +648,7 @@ void Console::setHighlight(const size_t startingRowNum)
 				{
 					if (s == currentWord)
 					{
-						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordOther, startingRowNum, i - currentWord.length(), currentWord.length());
+						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordOther, r, i - currentWord.length(), currentWord.length());
 						goto nextword;
 					}
 				}
@@ -663,9 +663,19 @@ void Console::setHighlight(const size_t startingRowNum)
 	}
 }
 
-bool Console::isSeparator(const uint8_t c)
+bool Console::isSeparator(std::string& wordToCheck, const uint8_t currentChar)
 {
-	return (c == '\0' || isspace(c) || (strchr(",.()+-=~%[];{}", c) != nullptr));
+	if (wordToCheck.length() == 0) return false;
+	if (wordToCheck == "/")
+	{
+		if (currentChar == '\0') return false;
+		if (currentChar == '/' || currentChar == '*')
+		{
+			return false;
+		}
+	}
+	if (wordToCheck == "//" || wordToCheck == "/*") return true;
+	return (currentChar == '\0' || currentChar == ' ' || (strchr(",.()+-/*=~%[];{}\n\t", currentChar) != nullptr));
 }
 //=================================================================== OS-SPECIFIC FUNCTIONS =============================================================================\\
 
