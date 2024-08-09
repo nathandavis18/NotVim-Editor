@@ -44,7 +44,7 @@ SOFTWARE.
 /// </summary>
 /// <param name="fileName"></param>
 Console::Window::Window() : fileCursorX(0), fileCursorY(0), cols(0), rows(0), renderedCursorX(0), renderedCursorY(0),
-rowOffset(0), colOffset(0), dirty(false), rawModeEnabled(false), fileRows(FileHandler::loadFileContents()), syntax(nullptr)
+rowOffset(0), colOffset(0), dirty(false), rawModeEnabled(false), fileRows(FileHandler::loadFileContents()), syntax(SyntaxHighlight::syntax())
 {}
 
 
@@ -62,6 +62,26 @@ Mode& Console::mode(Mode m)
 	return mMode;
 }
 
+void Console::updateRenderedColor(std::string& renderString, const size_t row, const size_t colOffset)
+{
+	std::string normalColorMode = "\x1b[39m";
+	size_t charactersToAdjust = 0;
+	for (const auto& highlight : mHighlight)
+	{
+		if (highlight.row < row) continue;
+		if (highlight.row > row) return;
+
+		if (colOffset >= highlight.col + highlight.length) continue;
+
+		const uint8_t color = SyntaxHighlight::color(highlight.colorType);
+		std::string colorFormat = std::format("\x1b[38;5;{}m", std::to_string(color));
+
+		renderString.insert(highlight.col + charactersToAdjust - colOffset, colorFormat);
+		charactersToAdjust += colorFormat.length();
+		renderString.insert(highlight.col + charactersToAdjust + highlight.length - colOffset, normalColorMode);
+		charactersToAdjust += normalColorMode.length();
+	}
+}
 
 /// <summary>
 /// Builds the output buffer and displays it to the user through std::cout
@@ -77,6 +97,19 @@ void Console::refreshScreen()
 	std::string renderBuffer = "\x1b[H"; //Move the cursor to (0, 0)
 	renderBuffer.append("\x1b[?251"); //Hide the cursor
 	renderBuffer.append("\x1b[J"); //Erase the screen to redraw changes
+
+	for (size_t r = 0; r < mWindow->rows && r < mWindow->fileRows.size(); ++r)
+	{
+		size_t fileRow = mWindow->rowOffset + r;
+		FileHandler::Row& row = mWindow->fileRows.at(fileRow);
+		row.renderedLine = row.line;
+		if (row.renderedLine.length() > 0)
+		{
+			replaceRenderedStringTabs(row.renderedLine);
+		}
+	}
+
+	setHighlight(mWindow->rowOffset);
 
 	for (size_t y = 0; y < mWindow->rows; ++y) //For each row within the displayable range
 	{
@@ -108,12 +141,6 @@ void Console::refreshScreen()
 		}
 
 		FileHandler::Row& row = mWindow->fileRows.at(fileRow);
-		row.renderedLine = row.line;
-		if (row.renderedLine.length() > 0)
-		{
-			replaceRenderedStringTabs(row.renderedLine); //Must do this before so information can be displayed properly
-		}
-
 		//Set the render string length to the lesser of the terminal width and the line length.
 		const size_t renderedLength = (row.renderedLine.length() - mWindow->colOffset) > mWindow->cols ? mWindow->cols : row.renderedLine.length();
 		if (renderedLength > 0)
@@ -122,6 +149,7 @@ void Console::refreshScreen()
 			{
 				row.renderedLine = row.renderedLine.substr(mWindow->colOffset, renderedLength);
 				renderBuffer.append("\x1b[39m");
+				updateRenderedColor(row.renderedLine, fileRow, mWindow->colOffset);
 				renderBuffer.append(row.renderedLine);
 			}
 			else
@@ -537,6 +565,108 @@ size_t Console::addRenderedCursorTabs(const FileHandler::Row& row)
 	return spacesToAdd;
 }
 
+void Console::setHighlight(const size_t startingRowNum)
+{
+	mHighlight.clear();
+	std::string currentWord = "";
+	for (size_t r = startingRowNum; r <= mWindow->rows; ++r)
+	{
+		if (r >= mWindow->fileRows.size()) return;
+
+		const FileHandler::Row& row = mWindow->fileRows[r];
+		for (size_t i = 0; i <= row.renderedLine.length(); ++i)
+		{
+			if (!isSeparator(row.renderedLine[i]))
+			{
+				currentWord.push_back(row.renderedLine[i]);
+			}
+			else
+			{
+				if (currentWord == mWindow->syntax.singlelineComment)
+				{
+					mHighlight.emplace_back(SyntaxHighlight::HighlightType::Comment, startingRowNum, i - currentWord.length(), row.renderedLine.length() - (i - currentWord.length()));
+					goto nextrow;
+				}
+				if (currentWord == mWindow->syntax.multilineCommentStart)
+				{
+					size_t currentRowNum = startingRowNum;
+					size_t startingPosition = i - currentWord.length();
+					while (true)
+					{
+						if (i + 1 >= row.renderedLine.length())
+						{
+							if (currentRowNum >= mWindow->fileRows.size() - 1)
+							{
+								for (size_t j = startingRowNum; j <= currentRowNum; ++j)
+								{
+									mHighlight.emplace_back(SyntaxHighlight::HighlightType::MultilineComment, currentRowNum, startingPosition, mWindow->fileRows[j].renderedLine.length() - startingPosition);
+									startingPosition = 0;
+								}
+								return;
+							}
+							++currentRowNum;
+							i = 0;
+						}
+						else if (row.renderedLine[i] == mWindow->syntax.multilineCommentEnd[0] && row.renderedLine[i + 1] == mWindow->syntax.multilineCommentEnd[1])
+						{
+							for (size_t j = startingRowNum; j < currentRowNum; ++j)
+							{
+								mHighlight.emplace_back(SyntaxHighlight::HighlightType::MultilineComment, startingRowNum, startingPosition, mWindow->fileRows[j].renderedLine.length() - startingPosition);
+							}
+							startingPosition = 0;
+							mHighlight.emplace_back(SyntaxHighlight::HighlightType::MultilineComment, currentRowNum, startingPosition, i + 1);
+							return;
+						}
+						++i;
+					}
+				}
+				for (const auto& s : mWindow->syntax.builtInTypeKeywords)
+				{
+					if (s == currentWord)
+					{
+						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordBuiltInType, startingRowNum, i - currentWord.length(), currentWord.length());
+						goto nextword;
+					}
+				}
+				for (const auto& s : mWindow->syntax.loopKeywords)
+				{
+					if (s == currentWord)
+					{
+						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordLoop, startingRowNum, i - currentWord.length(), currentWord.length());
+						goto nextword;
+					}
+				}
+				for (const auto& s : mWindow->syntax.classTypeKeywords)
+				{
+					if (s == currentWord)
+					{
+						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordClassType, startingRowNum, i - currentWord.length(), currentWord.length());
+						goto nextword;
+					}
+				}
+				for (const auto& s : mWindow->syntax.otherKeywords)
+				{
+					if (s == currentWord)
+					{
+						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordOther, startingRowNum, i - currentWord.length(), currentWord.length());
+						goto nextword;
+					}
+				}
+			} //Dont fall into nextword
+			continue; 
+		nextword:
+			currentWord.clear();
+		}
+		continue; //Dont fall into nextrow
+	nextrow:
+		currentWord.clear();
+	}
+}
+
+bool Console::isSeparator(const uint8_t c)
+{
+	return (c == '\0' || isspace(c) || (strchr(",.()+-=~%[];{}", c) != nullptr));
+}
 //=================================================================== OS-SPECIFIC FUNCTIONS =============================================================================\\
 
 #ifdef _WIN32

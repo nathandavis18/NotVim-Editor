@@ -26,13 +26,17 @@ SOFTWARE.
 
 namespace SyntaxHighlight
 {
+	std::array<uint8_t, static_cast<int>(HighlightType::EnumCount)> colors;
+	void setColors();
+
 	std::vector<EditorSyntax> syntaxContents;
 	uint8_t syntaxIndex = 0;
 
-	void addSyntax(const std::vector<std::string>& filetypes, const std::vector<std::string>& keywords, const std::string& singlelineComment,
+	void addSyntax(const std::vector<std::string>& filetypes, const std::vector<std::string>& builtInTypeKeywords, const std::vector<std::string>& classTypeKeywords,
+		const std::vector<std::string>& loopKeywords, const std::vector<std::string>& otherKeywords, const std::string& singlelineComment,
 		const std::string& multilineCommentStart, const std::string& multilineCommentEnd)
 	{
-		syntaxContents.push_back(EditorSyntax(filetypes, keywords, singlelineComment, multilineCommentStart, multilineCommentEnd));
+		syntaxContents.push_back(EditorSyntax(filetypes, builtInTypeKeywords, classTypeKeywords, loopKeywords, otherKeywords, singlelineComment, multilineCommentStart, multilineCommentEnd));
 	}
 	EditorSyntax& syntax()
 	{
@@ -40,7 +44,7 @@ namespace SyntaxHighlight
 	}
 	void initSyntax(const std::string_view& fName)
 	{
-		addSyntax(cppFiletypes, cppKeywords, "//", "/*", "*/");
+		addSyntax(cppFiletypes, cppBuiltInTypes, cppClassTypes, cppLoopKeywords, cppOtherKeywords, "//", "/*", "*/");
 
 		std::string extension;
 		size_t extensionIndex;
@@ -54,14 +58,37 @@ namespace SyntaxHighlight
 		}
 		for (uint8_t i = 0; i < syntaxContents.size(); ++i)
 		{
-			for (uint8_t j = 0; j < syntaxContents[i].filematch.size(); ++j)
+			for (const auto& fileType : syntaxContents[i].filematch)
 			{
-				if (syntaxContents[i].filematch[j] == extension)
+				if (fileType == extension)
 				{
+					setColors();
 					syntaxIndex = i;
 					return;
 				}
 			}
 		}
+	}
+
+	/// <summary>
+	/// Setting the color values for each type
+	/// Color IDs correspond to the IDs found at this link: https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797#:~:text=Where%20%7BID%7D%20should%20be%20replaced%20with%20the%20color%20index%20from%200%20to%20255%20of%20the%20following%20color%20table%3A
+	/// 
+	/// </summary>
+	void setColors()
+	{
+		colors[static_cast<int>(HighlightType::Normal)] = 255;
+		colors[static_cast<int>(HighlightType::Comment)] = 40;
+		colors[static_cast<int>(HighlightType::MultilineComment)] = 28;
+		colors[static_cast<int>(HighlightType::KeywordBuiltInType)] = 196;
+		colors[static_cast<int>(HighlightType::KeywordClassType)] = 226;
+		colors[static_cast<int>(HighlightType::KeywordLoop)] = 177;
+		colors[static_cast<int>(HighlightType::KeywordOther)] = 105;
+		colors[static_cast<int>(HighlightType::String)] = 215;
+		colors[static_cast<int>(HighlightType::Number)] = 6;
+	}
+	uint8_t color(HighlightType type)
+	{
+		return colors[static_cast<int>(type)];
 	}
 }
