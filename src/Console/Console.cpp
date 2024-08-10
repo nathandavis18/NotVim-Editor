@@ -47,7 +47,6 @@ Console::Window::Window() : fileCursorX(0), fileCursorY(0), cols(0), rows(0), re
 rowOffset(0), colOffset(0), dirty(false), rawModeEnabled(false), fileRows(FileHandler::loadFileContents()), syntax(SyntaxHighlight::syntax())
 {}
 
-
 /// <summary>
 /// Sets/Gets the current mode the editor is in
 /// </summary>
@@ -568,114 +567,114 @@ size_t Console::addRenderedCursorTabs(const FileHandler::Row& row)
 void Console::setHighlight(const size_t startingRowNum)
 {
 	mHighlight.clear();
+	constexpr uint8_t smallestLength = 2;
 	std::string currentWord = "";
-	for (size_t r = startingRowNum; r <= mWindow->rows; ++r)
+	for (size_t i = startingRowNum; i < mWindow->rows + startingRowNum && i < mWindow->fileRows.size(); ++i)
 	{
-		if (r >= mWindow->fileRows.size()) return;
-
-		const FileHandler::Row& row = mWindow->fileRows[r];
-		for (size_t i = 0; i <= row.renderedLine.length(); ++i)
+		FileHandler::Row& row = mWindow->fileRows.at(i);
+		for (size_t j = 0; j <= row.renderedLine.length(); ++j)
 		{
-			if (!isSeparator(currentWord, row.renderedLine[i]))
+			if (!isSeparator(currentWord, row.renderedLine[j]))
 			{
-				if(row.renderedLine[i] != '\0') currentWord.push_back(row.renderedLine[i]);
+				currentWord.push_back(row.renderedLine[j]);
 			}
+			else if ((row.renderedLine[j] == '/' || row.renderedLine[j] == '*') && currentWord.length() < smallestLength)
+			{
+				currentWord.push_back(row.renderedLine[j]);
+			}
+			else if (currentWord.length() < smallestLength) continue;
 			else
 			{
 				if (currentWord == mWindow->syntax.singlelineComment)
 				{
-					mHighlight.emplace_back(SyntaxHighlight::HighlightType::Comment, startingRowNum, i - currentWord.length(), row.renderedLine.length() - (i - currentWord.length()));
-					goto nextrow;
+					mHighlight.emplace_back(SyntaxHighlight::HighlightType::Comment, startingRowNum, j - currentWord.length(), row.renderedLine.length() - j + currentWord.length());
+					currentWord.clear();
+					continue;
 				}
-				if (currentWord == mWindow->syntax.multilineCommentStart)
+				else if (currentWord == mWindow->syntax.multilineCommentStart)
 				{
 					size_t currentRowNum = startingRowNum;
-					size_t startingPosition = i - currentWord.length();
+					size_t startingCol = j - currentWord.length();
+					size_t currentCol = j;
+					FileHandler::Row* currentRow = &row;
 					while (true)
 					{
-						if (i + 1 >= row.renderedLine.length())
+						if (currentRowNum == mWindow->fileRows.size())
 						{
-							if (currentRowNum >= mWindow->fileRows.size() - 1)
+							currentWord.clear();
+							break;
+						}
+						else if(currentCol > 0 && currentCol < currentRow->renderedLine.length())
+						{
+							char c1 = currentRow->renderedLine.at(currentCol - 1); char c2 = currentRow->renderedLine.at(currentCol);
+							if (c1 == mWindow->syntax.multilineCommentEnd.at(0) && c2 == mWindow->syntax.multilineCommentEnd.at(1))
 							{
-								for (size_t j = startingRowNum; j <= currentRowNum; ++j)
-								{
-									mHighlight.emplace_back(SyntaxHighlight::HighlightType::MultilineComment, currentRowNum, startingPosition, mWindow->fileRows[j].renderedLine.length() - startingPosition);
-									startingPosition = 0;
-								}
-								return;
+								mHighlight.emplace_back(SyntaxHighlight::HighlightType::MultilineComment, currentRowNum, startingCol, currentCol + 1);
+								currentWord.clear();
+								break;
 							}
+							else
+							{
+								++currentCol;
+							}
+						}
+						else
+						{
+							mHighlight.emplace_back(SyntaxHighlight::HighlightType::MultilineComment, currentRowNum, startingCol, currentRow->renderedLine.length() - startingCol);
 							++currentRowNum;
-							i = 0;
+							startingCol = 0;
+							currentCol = 0;
 						}
-						else if (row.renderedLine[i] == mWindow->syntax.multilineCommentEnd[0] && row.renderedLine[i + 1] == mWindow->syntax.multilineCommentEnd[1])
+					}
+					continue;
+				}
+				else
+				{
+					for (const auto& word : mWindow->syntax.builtInTypeKeywords)
+					{
+						if (currentWord == word)
 						{
-							for (size_t j = startingRowNum; j < currentRowNum; ++j)
-							{
-								mHighlight.emplace_back(SyntaxHighlight::HighlightType::MultilineComment, startingRowNum, startingPosition, mWindow->fileRows[j].renderedLine.length() - startingPosition);
-							}
-							startingPosition = 0;
-							mHighlight.emplace_back(SyntaxHighlight::HighlightType::MultilineComment, currentRowNum, startingPosition, i + 1);
-							return;
+							mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordBuiltInType, i, j - currentWord.length(), currentWord.length());
+							goto nextword;
 						}
-						++i;
 					}
-				}
-				for (const auto& s : mWindow->syntax.builtInTypeKeywords)
-				{
-					if (s == currentWord)
+					for (const auto& word : mWindow->syntax.loopKeywords)
 					{
-						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordBuiltInType, r, i - currentWord.length(), currentWord.length());
-						goto nextword;
+						if (currentWord == word)
+						{
+							mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordLoop, i, j - currentWord.length(), currentWord.length());
+							goto nextword;
+						}
 					}
-				}
-				for (const auto& s : mWindow->syntax.loopKeywords)
-				{
-					if (s == currentWord)
+					for (const auto& word : mWindow->syntax.classTypeKeywords)
 					{
-						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordLoop, r, i - currentWord.length(), currentWord.length());
-						goto nextword;
+						if (currentWord == word)
+						{
+							mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordClassType, i, j - currentWord.length(), currentWord.length());
+							goto nextword;
+						}
 					}
-				}
-				for (const auto& s : mWindow->syntax.classTypeKeywords)
-				{
-					if (s == currentWord)
+					for (const auto& word : mWindow->syntax.otherKeywords)
 					{
-						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordClassType, r, i - currentWord.length(), currentWord.length());
-						goto nextword;
+						if (currentWord == word)
+						{
+							mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordOther, i, j - currentWord.length(), currentWord.length());
+							goto nextword;
+						}
 					}
+				nextword:
+					currentWord.clear();
+					continue;
 				}
-				for (const auto& s : mWindow->syntax.otherKeywords)
-				{
-					if (s == currentWord)
-					{
-						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordOther, r, i - currentWord.length(), currentWord.length());
-						goto nextword;
-					}
-				}
-			} //Dont fall into nextword
-			continue; 
-		nextword:
-			currentWord.clear();
+			}
 		}
-		continue; //Dont fall into nextrow
-	nextrow:
-		currentWord.clear();
 	}
 }
 
 bool Console::isSeparator(std::string& wordToCheck, const uint8_t currentChar)
 {
-	if (wordToCheck.length() == 0) return false;
-	if (wordToCheck == "/")
-	{
-		if (currentChar == '\0') return false;
-		if (currentChar == '/' || currentChar == '*')
-		{
-			return false;
-		}
-	}
-	if (wordToCheck == "//" || wordToCheck == "/*") return true;
-	return (currentChar == '\0' || currentChar == ' ' || (strchr(",.()+-/*=~%[];{}\n\t", currentChar) != nullptr));
+	if (wordToCheck == mWindow->syntax.multilineCommentStart || wordToCheck == mWindow->syntax.multilineCommentEnd || wordToCheck == mWindow->syntax.singlelineComment) return true;
+	return (currentChar == '\0' || currentChar == ' ' || (strchr(",.()+-/*=~%[];{}:<>\n\t", currentChar) != nullptr));
 }
 //=================================================================== OS-SPECIFIC FUNCTIONS =============================================================================\\
 
