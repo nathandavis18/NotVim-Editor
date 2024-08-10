@@ -588,8 +588,7 @@ void Console::setHighlight(const size_t startingRowNum)
 				if (currentWord == mWindow->syntax.singlelineComment)
 				{
 					mHighlight.emplace_back(SyntaxHighlight::HighlightType::Comment, startingRowNum, j - currentWord.length(), row.renderedLine.length() - j + currentWord.length());
-					currentWord.clear();
-					continue;
+					goto nextrow;
 				}
 				else if (currentWord == mWindow->syntax.multilineCommentStart)
 				{
@@ -668,6 +667,9 @@ void Console::setHighlight(const size_t startingRowNum)
 				}
 			}
 		}
+	nextrow:
+		currentWord.clear();
+		continue;
 	}
 }
 
