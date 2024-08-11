@@ -69,16 +69,33 @@ void Console::updateRenderedColor(std::string& renderString, const size_t row, c
 	{
 		if (highlight.row < row) continue;
 		if (highlight.row > row) return;
-
-		if (colOffset >= highlight.col + highlight.length) continue;
+		if (colOffset >= highlight.col + highlight.length || highlight.col >= mWindow->cols + colOffset) continue;
 
 		const uint8_t color = SyntaxHighlight::color(highlight.colorType);
 		std::string colorFormat = std::format("\x1b[38;5;{}m", std::to_string(color));
 
-		renderString.insert(highlight.col + charactersToAdjust - colOffset, colorFormat);
-		charactersToAdjust += colorFormat.length();
-		renderString.insert(highlight.col + charactersToAdjust + highlight.length - colOffset, normalColorMode);
-		charactersToAdjust += normalColorMode.length();
+		if (colOffset >= highlight.col)
+		{
+			renderString.insert(0, colorFormat);
+			charactersToAdjust += colorFormat.length();
+			renderString.insert(highlight.length + highlight.col + charactersToAdjust - colOffset, normalColorMode);
+			charactersToAdjust += normalColorMode.length();
+		}
+		else
+		{
+			renderString.insert(highlight.col + charactersToAdjust - colOffset, colorFormat);
+			charactersToAdjust += colorFormat.length();
+			if (highlight.length + highlight.col > mWindow->cols + colOffset)
+			{
+				renderString.insert(mWindow->cols + charactersToAdjust, normalColorMode);
+				charactersToAdjust += normalColorMode.length();
+			}
+			else
+			{
+				renderString.insert(highlight.col + charactersToAdjust + highlight.length - colOffset, normalColorMode);
+				charactersToAdjust += normalColorMode.length();
+			}
+		}
 	}
 }
 
@@ -571,61 +588,68 @@ void Console::setHighlight(const size_t startingRowNum)
 	std::string currentWord = "";
 	for (size_t i = startingRowNum; i < mWindow->rows + startingRowNum && i < mWindow->fileRows.size(); ++i)
 	{
-		FileHandler::Row& row = mWindow->fileRows.at(i);
-		for (size_t j = 0; j <= row.renderedLine.length(); ++j)
+		FileHandler::Row* row = &mWindow->fileRows.at(i);
+		for (size_t j = 0; j <= row->renderedLine.length(); ++j)
 		{
-			if (!isSeparator(currentWord, row.renderedLine[j]))
+			if (!isSeparator(currentWord, row->renderedLine[j]))
 			{
-				currentWord.push_back(row.renderedLine[j]);
+				currentWord.push_back(row->renderedLine[j]);
 			}
-			else if ((row.renderedLine[j] == '/' || row.renderedLine[j] == '*') && currentWord.length() < smallestLength)
+			else if ((row->renderedLine[j] == '/' || row->renderedLine[j] == '*') && currentWord.length() < smallestLength)
 			{
-				currentWord.push_back(row.renderedLine[j]);
+				currentWord.push_back(row->renderedLine[j]);
 			}
 			else if (currentWord.length() < smallestLength) continue;
 			else
 			{
 				if (currentWord == mWindow->syntax.singlelineComment)
 				{
-					mHighlight.emplace_back(SyntaxHighlight::HighlightType::Comment, startingRowNum, j - currentWord.length(), row.renderedLine.length() - j + currentWord.length());
-					goto nextrow;
+					mHighlight.emplace_back(SyntaxHighlight::HighlightType::Comment, i, j - currentWord.length(), row->renderedLine.length() - j + currentWord.length());
+					break;
 				}
-				else if (currentWord == mWindow->syntax.multilineCommentStart)
+				else if (currentWord == mWindow->syntax.multilineCommentStart) //This area needs some serious work but the other highlights seem to work properly
 				{
-					size_t currentRowNum = startingRowNum;
-					size_t startingCol = j - currentWord.length();
-					size_t currentCol = j;
-					FileHandler::Row* currentRow = &row;
+					size_t currentCol = j + 1;
+					size_t currentRowCommentStart = j - currentWord.length();
+					size_t currentRow = i;
+					FileHandler::Row* currentFileRow;
 					while (true)
 					{
-						if (currentRowNum == mWindow->fileRows.size())
+						currentFileRow = &mWindow->fileRows[currentRow];
+						if (currentCol >= mWindow->syntax.multilineCommentEnd.length() - 1 && currentCol < currentFileRow->renderedLine.length())
 						{
-							currentWord.clear();
-							break;
-						}
-						else if(currentCol > 0 && currentCol < currentRow->renderedLine.length())
-						{
-							char c1 = currentRow->renderedLine.at(currentCol - 1); char c2 = currentRow->renderedLine.at(currentCol);
-							if (c1 == mWindow->syntax.multilineCommentEnd.at(0) && c2 == mWindow->syntax.multilineCommentEnd.at(1))
+							std::string wordToCheck = currentFileRow->renderedLine.substr(currentCol - mWindow->syntax.multilineCommentEnd.length() + 1, mWindow->syntax.multilineCommentEnd.length());
+							if (wordToCheck == mWindow->syntax.multilineCommentEnd)
 							{
-								mHighlight.emplace_back(SyntaxHighlight::HighlightType::MultilineComment, currentRowNum, startingCol, currentCol + 1);
-								currentWord.clear();
-								break;
+								size_t length = currentCol + 1 - currentRowCommentStart;
+								mHighlight.emplace_back(SyntaxHighlight::HighlightType::MultilineComment, currentRow, currentRowCommentStart, length);
+								i = currentRow;
+								j = currentCol;
+								row = &mWindow->fileRows.at(i);
+								goto nextword;
 							}
 							else
 							{
 								++currentCol;
 							}
 						}
+						else if (currentCol >= currentFileRow->renderedLine.length())
+						{
+							mHighlight.emplace_back(SyntaxHighlight::HighlightType::MultilineComment, currentRow, currentRowCommentStart, currentFileRow->renderedLine.length() - currentRowCommentStart);
+							++currentRow;
+							currentCol = 0;
+							currentRowCommentStart = 0;
+						}
 						else
 						{
-							mHighlight.emplace_back(SyntaxHighlight::HighlightType::MultilineComment, currentRowNum, startingCol, currentRow->renderedLine.length() - startingCol);
-							++currentRowNum;
-							startingCol = 0;
-							currentCol = 0;
+							++currentCol;
+						}
+
+						if (currentRow >= mWindow->fileRows.size())
+						{
+							return;
 						}
 					}
-					continue;
 				}
 				else
 				{
@@ -667,9 +691,6 @@ void Console::setHighlight(const size_t startingRowNum)
 				}
 			}
 		}
-	nextrow:
-		currentWord.clear();
-		continue;
 	}
 }
 
