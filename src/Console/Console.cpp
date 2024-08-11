@@ -585,9 +585,9 @@ void Console::setHighlight(const size_t startingRowNum)
 {
 	mHighlight.clear();
 	constexpr uint8_t smallestLength = 2;
-	std::string currentWord = "";
 	for (size_t i = startingRowNum; i < mWindow->rows + startingRowNum && i < mWindow->fileRows.size(); ++i)
 	{
+		std::string currentWord;
 		FileHandler::Row* row = &mWindow->fileRows.at(i);
 		for (size_t j = 0; j <= row->renderedLine.length(); ++j)
 		{
@@ -665,7 +665,7 @@ void Console::setHighlight(const size_t startingRowNum)
 					{
 						if (currentWord == word)
 						{
-							mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordLoop, i, j - currentWord.length(), currentWord.length());
+							mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordControl, i, j - currentWord.length(), currentWord.length());
 							goto nextword;
 						}
 					}

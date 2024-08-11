@@ -44,7 +44,7 @@ namespace SyntaxHighlight
 	}
 	void initSyntax(const std::string_view& fName)
 	{
-		addSyntax(cppFiletypes, cppBuiltInTypes, cppClassTypes, cppLoopKeywords, cppOtherKeywords, "//", "/*", "*/");
+		addSyntax(cppFiletypes, cppBuiltInTypes, cppClassTypes, cppControlKeywords, cppOtherKeywords, "//", "/*", "*/");
 
 		std::string extension;
 		size_t extensionIndex;
@@ -82,7 +82,7 @@ namespace SyntaxHighlight
 		colors[static_cast<int>(HighlightType::MultilineComment)] = 28;
 		colors[static_cast<int>(HighlightType::KeywordBuiltInType)] = 196;
 		colors[static_cast<int>(HighlightType::KeywordClassType)] = 226;
-		colors[static_cast<int>(HighlightType::KeywordLoop)] = 177;
+		colors[static_cast<int>(HighlightType::KeywordControl)] = 177;
 		colors[static_cast<int>(HighlightType::KeywordOther)] = 105;
 		colors[static_cast<int>(HighlightType::String)] = 215;
 		colors[static_cast<int>(HighlightType::Number)] = 6;
