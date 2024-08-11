@@ -77,14 +77,25 @@ private:
 
 		bool dirty;
 		bool rawModeEnabled;
-		SyntaxHighlight::EditorSyntax* syntax;
+		SyntaxHighlight::EditorSyntax& syntax;
 	};
+
+	struct HighlightLocations
+	{
+		SyntaxHighlight::HighlightType colorType;
+		size_t row, col, length;
+	};
+
+	static void updateRenderedColor(std::string&, const size_t row, const size_t colOffset);
 	static void deleteRow(const size_t rowNum);
 	static void fixRenderedCursorPosition(const FileHandler::Row&);
 	static void replaceRenderedStringTabs(std::string&);
 	static size_t addRenderedCursorTabs(const FileHandler::Row&);
+	static bool isSeparator(std::string& wordToCheck, const uint8_t currentChar);
+	static void setHighlight(const size_t rowNum);
 
 private:
 	inline static std::unique_ptr<Window> mWindow;
+	inline static std::vector<HighlightLocations> mHighlight;
 	inline static Mode mMode = Mode::ReadMode;
 };

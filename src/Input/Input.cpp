@@ -36,14 +36,55 @@ using KeyActions::KeyAction;
 
 namespace InputHandler
 {
+	uint16_t getInput()
+	{
+		uint8_t input = _getch();
+#ifdef _WIN32
+		static constexpr uint8_t specialKeyCode = 224;
+		static constexpr bool functionKeyCode = 0;
+		if (input == functionKeyCode)
+		{
+			uint8_t _ = _getch(); //Ignore the function key specifier value
+			return 0; //Don't do anything if a function key (F1, F2, etc.) is pressed
+		}
+		else if (input == specialKeyCode) //This is the code to determine arrow key presses, delete, end, home, pageup/down
+		{
+			input = _getch(); //Get the special key identifier
+			switch (input)
+			{
+				//When not holding control
+			case 'K': return static_cast<uint16_t>(KeyAction::ArrowLeft);
+			case 'M': return static_cast<uint16_t>(KeyAction::ArrowRight);
+			case 'P': return static_cast<uint16_t>(KeyAction::ArrowDown);
+			case 'H': return static_cast<uint16_t>(KeyAction::ArrowUp);
+			case 'S': return static_cast<uint16_t>(KeyAction::Delete);
+			case 'O': return static_cast<uint16_t>(KeyAction::End);
+			case 'G': return static_cast<uint16_t>(KeyAction::Home);
+			case 'Q': return static_cast<uint16_t>(KeyAction::PageDown);
+			case 'I': return static_cast<uint16_t>(KeyAction::PageUp);
+
+				//When holding control
+			case 's': return static_cast<uint16_t>(KeyAction::CtrlArrowLeft);
+			case 't': return static_cast<uint16_t>(KeyAction::CtrlArrowRight);
+			case 145: return static_cast<uint16_t>(KeyAction::CtrlArrowDown); //Non-letter ASCII Code
+			case 141: return static_cast<uint16_t>(KeyAction::CtrlArrowUp); //Unused ASCII Code
+			case '"': return static_cast<uint16_t>(KeyAction::CtrlDelete);
+			case 'u': return static_cast<uint16_t>(KeyAction::CtrlEnd);
+			case 'w': return static_cast<uint16_t>(KeyAction::CtrlHome);
+			case 'v': return static_cast<uint16_t>(KeyAction::CtrlPageDown);
+			case 134: return static_cast<uint16_t>(KeyAction::CtrlPageUp); //Non-letter ASCII Code
+			}
+		}
+#endif
+		return input;
+	}
 	/// <summary>
 	/// Handles commands while in command/read mode
 	/// i = Enter edit mode (like VIM)
 	/// : = Enter command mode (like VIM)
 	/// </summary>
-	void doCommand()
+	void doCommand(const uint16_t input)
 	{
-		uint8_t input = _getch();
 		std::string command;
 		switch (input)
 		{
@@ -96,59 +137,40 @@ namespace InputHandler
 	/// Windows uses the _getch() function from <conio.h>.
 	/// Linux uses a custom _getch() function
 	/// </summary>
-	void handleInput()
+	void handleInput(const uint16_t input)
 	{
-		uint8_t input = _getch();
-
-#ifdef _WIN32
-		static constexpr uint8_t specialKeyCode = 224;
-		static constexpr bool functionKeyCode = 0;
-		if (input == functionKeyCode)
-		{
-			uint8_t _ = _getch(); //Ignore the function key specifier value
-			return; //Don't do anything if a function key (F1, F2, etc.) is pressed
-		}
-		else if (input == specialKeyCode) //This is the code to determine arrow key presses, delete, end, home, pageup/down
-		{
-			input = _getch(); //Get the special key identifier
-		}
-#endif
 		KeyAction key = static_cast<KeyAction>(input);
-		if (key == KeyAction::Esc)
+		switch (key)
 		{
+		case KeyAction::Esc:
 			Console::mode(Mode::ReadMode);
-		}
-		else
-		{
-			switch (key)
-			{
-			case KeyAction::Delete:
-			case KeyAction::Backspace:
-				Console::deleteChar(key);
-				break;
-			case KeyAction::ArrowDown:
-			case KeyAction::ArrowUp:
-			case KeyAction::ArrowLeft:
-			case KeyAction::ArrowRight:
-				Console::moveCursor(key);
-				break;
-			case KeyAction::CtrlArrowDown:
-			case KeyAction::CtrlArrowUp:
-				Console::shiftRowOffset(key);
-				break;
-			case KeyAction::Enter:
-				Console::addRow();
-				break;
-			default:
-				Console::insertChar(input);
-				break;
-			}
+			break;
+		case KeyAction::Delete:
+		case KeyAction::Backspace:
+			Console::deleteChar(key);
+			break;
+		case KeyAction::ArrowDown:
+		case KeyAction::ArrowUp:
+		case KeyAction::ArrowLeft:
+		case KeyAction::ArrowRight:
+			Console::moveCursor(key);
+			break;
+		case KeyAction::CtrlArrowDown:
+		case KeyAction::CtrlArrowUp:
+			Console::shiftRowOffset(key);
+			break;
+		case KeyAction::Enter:
+			Console::addRow();
+			break;
+		default:
+			Console::insertChar(input);
+			break;
 		}
 	}
 }
 
 #if defined(__linux__) || defined(__APPLE__)
-uint8_t _getch()
+uint16_t _getch()
 {
 	uint8_t nread;
 	uint8_t c;
@@ -160,10 +182,10 @@ uint8_t _getch()
 	{
 		switch (c)
 		{
-		case static_cast<uint8_t>(KeyAction::Esc): //Escape sequences for certain characters
+		case static_cast<uint16_t>(KeyAction::Esc): //Escape sequences for certain characters
 			char seq[3];
-			if (read(STDIN_FILENO, seq, 1) == 0) return static_cast<uint8_t>(KeyAction::Esc);
-			if (read(STDIN_FILENO, seq + 1, 1) == 0) return static_cast<uint8_t>(KeyAction::Esc);
+			if (read(STDIN_FILENO, seq, 1) == 0) return static_cast<uint16_t>(KeyAction::Esc);
+			if (read(STDIN_FILENO, seq + 1, 1) == 0) return static_cast<uint16_t>(KeyAction::Esc);
 
 			if (seq[0] == '[')
 			{
@@ -173,9 +195,9 @@ uint8_t _getch()
 					{
 						switch (seq[1])
 						{
-						case '3': return static_cast<uint8_t>(KeyAction::Delete);
-						case '5': return static_cast<uint8_t>(KeyAction::PageUp);
-						case '6': return static_cast<uint8_t>(KeyAction::PageDown);
+						case '3': return static_cast<uint16_t>(KeyAction::Delete);
+						case '5': return static_cast<uint16_t>(KeyAction::PageUp);
+						case '6': return static_cast<uint16_t>(KeyAction::PageDown);
 						}
 					}
 					else if (seq[2] == ';')
@@ -183,22 +205,22 @@ uint8_t _getch()
 						switch (seq[1])
 						{
 						case '1':
-							if (read(STDIN_FILENO, seq, 1) == 0) return static_cast<uint8_t>(KeyAction::Esc);
-							if (read(STDIN_FILENO, seq + 1, 1) == 0) return static_cast<uint8_t>(KeyAction::Esc);
+							if (read(STDIN_FILENO, seq, 1) == 0) return static_cast<uint16_t>(KeyAction::Esc);
+							if (read(STDIN_FILENO, seq + 1, 1) == 0) return static_cast<uint16_t>(KeyAction::Esc);
 							if (seq[0] == '5')
 							{
 								switch (seq[1])
 								{
-								case 'A': return static_cast<uint8_t>(KeyAction::CtrlArrowUp);
-								case 'B': return static_cast<uint8_t>(KeyAction::CtrlArrowDown);
-								case 'C': return static_cast<uint8_t>(KeyAction::CtrlArrowRight);
-								case 'D': return static_cast<uint8_t>(KeyAction::CtrlArrowLeft);
+								case 'A': return static_cast<uint16_t>(KeyAction::CtrlArrowUp);
+								case 'B': return static_cast<uint16_t>(KeyAction::CtrlArrowDown);
+								case 'C': return static_cast<uint16_t>(KeyAction::CtrlArrowRight);
+								case 'D': return static_cast<uint16_t>(KeyAction::CtrlArrowLeft);
 								}
 							}
 
-						case '3': return static_cast<uint8_t>(KeyAction::CtrlDelete);
-						case '5': return static_cast<uint8_t>(KeyAction::CtrlPageUp);
-						case '6': return static_cast<uint8_t>(KeyAction::CtrlPageDown);
+						case '3': return static_cast<uint16_t>(KeyAction::CtrlDelete);
+						case '5': return static_cast<uint16_t>(KeyAction::CtrlPageUp);
+						case '6': return static_cast<uint16_t>(KeyAction::CtrlPageDown);
 						}
 					}
 				}
@@ -206,12 +228,12 @@ uint8_t _getch()
 				{
 					switch (seq[1])
 					{
-					case 'A': return static_cast<uint8_t>(KeyAction::ArrowUp);
-					case 'B': return static_cast<uint8_t>(KeyAction::ArrowDown);
-					case 'C': return static_cast<uint8_t>(KeyAction::ArrowRight);
-					case 'D': return static_cast<uint8_t>(KeyAction::ArrowLeft);
-					case 'H': return static_cast<uint8_t>(KeyAction::Home);
-					case 'F': return static_cast<uint8_t>(KeyAction::End);
+					case 'A': return static_cast<uint16_t>(KeyAction::ArrowUp);
+					case 'B': return static_cast<uint16_t>(KeyAction::ArrowDown);
+					case 'C': return static_cast<uint16_t>(KeyAction::ArrowRight);
+					case 'D': return static_cast<uint16_t>(KeyAction::ArrowLeft);
+					case 'H': return static_cast<uint16_t>(KeyAction::Home);
+					case 'F': return static_cast<uint16_t>(KeyAction::End);
 					}
 				}
 			}
@@ -219,8 +241,8 @@ uint8_t _getch()
 			{
 				switch (seq[1])
 				{
-				case 'H': return static_cast<uint8_t>(KeyAction::Home);
-				case 'F': return static_cast<uint8_t>(KeyAction::End);
+				case 'H': return static_cast<uint16_t>(KeyAction::Home);
+				case 'F': return static_cast<uint16_t>(KeyAction::End);
 				}
 			}
 			break;

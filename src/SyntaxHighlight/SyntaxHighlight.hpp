@@ -24,6 +24,7 @@ SOFTWARE.
 
 #pragma once
 #include <vector>
+#include <array>
 #include <string>
 #include <cstdint> //uint8_t
 
@@ -31,13 +32,17 @@ namespace SyntaxHighlight{
 	struct EditorSyntax
 	{
 		std::vector<std::string> filematch;
-		std::vector<std::string> keywords;
+		std::vector<std::string> builtInTypeKeywords;
+		std::vector<std::string> classTypeKeywords;
+		std::vector<std::string> loopKeywords;
+		std::vector<std::string> otherKeywords;
 		std::string singlelineComment;
 		std::string multilineCommentStart;
 		std::string multilineCommentEnd;
 	};
-	void addSyntax(const std::vector<std::string>& filetypes, const std::vector<std::string>& keywords, const std::string& singlelineComment,
-		const std::string& multilineCommentStart, const std::string& multilineCommentEnd);
+	void addSyntax(const std::vector<std::string>& filetypes, const std::vector<std::string>& builtInTypeKeywords, const std::vector<std::string>& classTypeKeywords, 
+		const std::vector<std::string>& loopKeywords, const std::vector<std::string>& otherKeywords, 
+		const std::string& singlelineComment, const std::string& multilineCommentStart, const std::string& multilineCommentEnd);
 
 	EditorSyntax& syntax();
 
@@ -48,33 +53,40 @@ namespace SyntaxHighlight{
 		Normal,
 		Comment,
 		MultilineComment,
-		KeywordType,
-		KeywordLoop,
+		KeywordBuiltInType,
+		KeywordClassType,
+		KeywordControl,
 		KeywordOther,
 		String,
 		Number,
-		Find
+		EnumCount
 	};
-	struct HighlightColor
-	{
-		int r, g, b;
-	};
+
+	uint8_t color(HighlightType);
 
 	static const std::vector<std::string> cppFiletypes{ ".cpp", ".cc", ".cxx", ".hpp", ".h", ".hxx", ".hh" };
-	static const std::vector<std::string> cppKeywords{
-		//Types
-		"int|", "long|", "double|", "float|", "char|", "unsigned|", "signed|",
-		"void|", "short|", "auto|", "const|", "bool|", "enum|", "nullptr|",
-		"struct", "class", "constexpr", "volatile", "mutable", "union", "typedef",
-		"#define", "consteval", "register", "compl", "explicit", "true", "false", "virtual",
-
-		//Loop/Control keywords
-		"for", "while", "do", "continue", "break", "if", "else", "not", "not_eq",
-		"or", "or_eq", "throw", "catch", "try", "xor", "xor_eq", "goto", "return",
-		"bitand", "bitor", "case",
-
-		//Other keywords
-		"decltype", "sizeof", "static_cast", "dynamic_cast", "reinterpret_cast", "template", "this",
-		"operator", "private", "pubic", "protected", "inline", "typeid", "typename", "alignas", "alignof", "export"
+	static const std::vector<std::string> cppBuiltInTypes{
+		//Built-in types and main keywords
+		"alignas", "alignof", "asm", "_asm", "auto", "bool", "char", "char8_t", "char16_t", "char32_t", "class",
+		"compl", "concept", "const", "consteval", "constexpr", "constinit", "const_cast", "decltype", "delete", "double",
+		"dynamic_cast", "enum", "explicit", "export", "extern", "false", "float", "friend", "inline", "int", "long",
+		"mutable", "namespace", "new", "noexcept", "nullptr", "operator", "private", "protected", "public", "register",
+		"reinterpret_cast", "requires", "short", "signed", "sizeof", "static", "static_assert", "static_cast", "struct",
+		"template", "this", "thread_local", "true", "typedef", "typeid", "typename", "union", "unsigned", "using", "virtual",
+		"void", "volatile", "wchar_t"
 	};
+	static const std::vector<std::string> cppClassTypes{
+		//Some class types included in the STL
+		"string", "vector", "array", "string_view", "atomic", "thread",
+		"uint8_t", "uint16_t", "uint32_t", "uint64_t", "size_t", "int8_t", "int16_t", "int32_t", "int64_t"
+	};
+	static const std::vector<std::string> cppControlKeywords{
+		//Loop/Control keywords
+		"and", "and_eq", "bitand", "bitor", "break", "case", "catch", "continue", "co_await", "co_return", "co_yield", "default",
+		"do", "else", "for", "goto", "if", "not", "not_eq", "or", "or_eq", "return", "switch", "throw", "try", "while", "xor", "xor_eq"
+	};
+	static const std::vector<std::string> cppOtherKeywords{
+		//Some other keywords, such as macro definitions
+		"#define", "#ifdef", "#ifndef", "#if", "defined"
+	}; 
 }

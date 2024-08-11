@@ -44,9 +44,8 @@ SOFTWARE.
 /// </summary>
 /// <param name="fileName"></param>
 Console::Window::Window() : fileCursorX(0), fileCursorY(0), cols(0), rows(0), renderedCursorX(0), renderedCursorY(0),
-rowOffset(0), colOffset(0), dirty(false), rawModeEnabled(false), fileRows(FileHandler::loadFileContents()), syntax(nullptr)
+rowOffset(0), colOffset(0), dirty(false), rawModeEnabled(false), fileRows(FileHandler::loadFileContents()), syntax(SyntaxHighlight::syntax())
 {}
-
 
 /// <summary>
 /// Sets/Gets the current mode the editor is in
@@ -62,6 +61,43 @@ Mode& Console::mode(Mode m)
 	return mMode;
 }
 
+void Console::updateRenderedColor(std::string& renderString, const size_t row, const size_t colOffset)
+{
+	std::string normalColorMode = "\x1b[39m";
+	size_t charactersToAdjust = 0;
+	for (const auto& highlight : mHighlight)
+	{
+		if (highlight.row < row) continue;
+		if (highlight.row > row) return;
+		if (colOffset >= highlight.col + highlight.length || highlight.col >= mWindow->cols + colOffset) continue;
+
+		const uint8_t color = SyntaxHighlight::color(highlight.colorType);
+		std::string colorFormat = std::format("\x1b[38;5;{}m", std::to_string(color));
+
+		if (colOffset >= highlight.col)
+		{
+			renderString.insert(0, colorFormat);
+			charactersToAdjust += colorFormat.length();
+			renderString.insert(highlight.length + highlight.col + charactersToAdjust - colOffset, normalColorMode);
+			charactersToAdjust += normalColorMode.length();
+		}
+		else
+		{
+			renderString.insert(highlight.col + charactersToAdjust - colOffset, colorFormat);
+			charactersToAdjust += colorFormat.length();
+			if (highlight.length + highlight.col > mWindow->cols + colOffset)
+			{
+				renderString.insert(mWindow->cols + charactersToAdjust, normalColorMode);
+				charactersToAdjust += normalColorMode.length();
+			}
+			else
+			{
+				renderString.insert(highlight.col + charactersToAdjust + highlight.length - colOffset, normalColorMode);
+				charactersToAdjust += normalColorMode.length();
+			}
+		}
+	}
+}
 
 /// <summary>
 /// Builds the output buffer and displays it to the user through std::cout
@@ -77,6 +113,19 @@ void Console::refreshScreen()
 	std::string renderBuffer = "\x1b[H"; //Move the cursor to (0, 0)
 	renderBuffer.append("\x1b[?251"); //Hide the cursor
 	renderBuffer.append("\x1b[J"); //Erase the screen to redraw changes
+
+	for (size_t r = 0; r < mWindow->rows && r < mWindow->fileRows.size(); ++r)
+	{
+		size_t fileRow = mWindow->rowOffset + r;
+		FileHandler::Row& row = mWindow->fileRows.at(fileRow);
+		row.renderedLine = row.line;
+		if (row.renderedLine.length() > 0)
+		{
+			replaceRenderedStringTabs(row.renderedLine);
+		}
+	}
+
+	setHighlight(mWindow->rowOffset);
 
 	for (size_t y = 0; y < mWindow->rows; ++y) //For each row within the displayable range
 	{
@@ -108,12 +157,6 @@ void Console::refreshScreen()
 		}
 
 		FileHandler::Row& row = mWindow->fileRows.at(fileRow);
-		row.renderedLine = row.line;
-		if (row.renderedLine.length() > 0)
-		{
-			replaceRenderedStringTabs(row.renderedLine); //Must do this before so information can be displayed properly
-		}
-
 		//Set the render string length to the lesser of the terminal width and the line length.
 		const size_t renderedLength = (row.renderedLine.length() - mWindow->colOffset) > mWindow->cols ? mWindow->cols : row.renderedLine.length();
 		if (renderedLength > 0)
@@ -122,6 +165,7 @@ void Console::refreshScreen()
 			{
 				row.renderedLine = row.renderedLine.substr(mWindow->colOffset, renderedLength);
 				renderBuffer.append("\x1b[39m");
+				updateRenderedColor(row.renderedLine, fileRow, mWindow->colOffset);
 				renderBuffer.append(row.renderedLine);
 			}
 			else
@@ -537,6 +581,124 @@ size_t Console::addRenderedCursorTabs(const FileHandler::Row& row)
 	return spacesToAdd;
 }
 
+void Console::setHighlight(const size_t startingRowNum)
+{
+	mHighlight.clear();
+	constexpr uint8_t smallestLength = 2;
+	for (size_t i = startingRowNum; i < mWindow->rows + startingRowNum && i < mWindow->fileRows.size(); ++i)
+	{
+		std::string currentWord;
+		FileHandler::Row* row = &mWindow->fileRows.at(i);
+		for (size_t j = 0; j <= row->renderedLine.length(); ++j)
+		{
+			if (!isSeparator(currentWord, row->renderedLine[j]))
+			{
+				currentWord.push_back(row->renderedLine[j]);
+			}
+			else if ((row->renderedLine[j] == '/' || row->renderedLine[j] == '*') && currentWord.length() < smallestLength)
+			{
+				currentWord.push_back(row->renderedLine[j]);
+			}
+			else if (currentWord.length() < smallestLength) continue;
+			else
+			{
+				if (currentWord == mWindow->syntax.singlelineComment)
+				{
+					mHighlight.emplace_back(SyntaxHighlight::HighlightType::Comment, i, j - currentWord.length(), row->renderedLine.length() - j + currentWord.length());
+					break;
+				}
+				else if (currentWord == mWindow->syntax.multilineCommentStart) //This area needs some serious work but the other highlights seem to work properly
+				{
+					size_t currentCol = j + 1;
+					size_t currentRowCommentStart = j - currentWord.length();
+					size_t currentRow = i;
+					FileHandler::Row* currentFileRow;
+					while (true)
+					{
+						currentFileRow = &mWindow->fileRows[currentRow];
+						if (currentCol >= mWindow->syntax.multilineCommentEnd.length() - 1 && currentCol < currentFileRow->renderedLine.length())
+						{
+							std::string wordToCheck = currentFileRow->renderedLine.substr(currentCol - mWindow->syntax.multilineCommentEnd.length() + 1, mWindow->syntax.multilineCommentEnd.length());
+							if (wordToCheck == mWindow->syntax.multilineCommentEnd)
+							{
+								size_t length = currentCol + 1 - currentRowCommentStart;
+								mHighlight.emplace_back(SyntaxHighlight::HighlightType::MultilineComment, currentRow, currentRowCommentStart, length);
+								i = currentRow;
+								j = currentCol;
+								row = &mWindow->fileRows.at(i);
+								goto nextword;
+							}
+							else
+							{
+								++currentCol;
+							}
+						}
+						else if (currentCol >= currentFileRow->renderedLine.length())
+						{
+							mHighlight.emplace_back(SyntaxHighlight::HighlightType::MultilineComment, currentRow, currentRowCommentStart, currentFileRow->renderedLine.length() - currentRowCommentStart);
+							++currentRow;
+							currentCol = 0;
+							currentRowCommentStart = 0;
+						}
+						else
+						{
+							++currentCol;
+						}
+
+						if (currentRow >= mWindow->fileRows.size())
+						{
+							return;
+						}
+					}
+				}
+				else
+				{
+					for (const auto& word : mWindow->syntax.builtInTypeKeywords)
+					{
+						if (currentWord == word)
+						{
+							mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordBuiltInType, i, j - currentWord.length(), currentWord.length());
+							goto nextword;
+						}
+					}
+					for (const auto& word : mWindow->syntax.loopKeywords)
+					{
+						if (currentWord == word)
+						{
+							mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordControl, i, j - currentWord.length(), currentWord.length());
+							goto nextword;
+						}
+					}
+					for (const auto& word : mWindow->syntax.classTypeKeywords)
+					{
+						if (currentWord == word)
+						{
+							mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordClassType, i, j - currentWord.length(), currentWord.length());
+							goto nextword;
+						}
+					}
+					for (const auto& word : mWindow->syntax.otherKeywords)
+					{
+						if (currentWord == word)
+						{
+							mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordOther, i, j - currentWord.length(), currentWord.length());
+							goto nextword;
+						}
+					}
+				nextword:
+					currentWord.clear();
+					continue;
+				}
+			}
+		}
+	}
+}
+
+bool Console::isSeparator(std::string& wordToCheck, const uint8_t currentChar)
+{
+	if (wordToCheck == mWindow->syntax.multilineCommentStart || wordToCheck == mWindow->syntax.multilineCommentEnd || wordToCheck == mWindow->syntax.singlelineComment) return true;
+	return (currentChar == '\0' || currentChar == ' ' || (strchr(",.()+-/*=~%[];{}:<>\n\t", currentChar) != nullptr));
+}
 //=================================================================== OS-SPECIFIC FUNCTIONS =============================================================================\\
 
 #ifdef _WIN32
