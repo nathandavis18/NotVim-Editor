@@ -5,7 +5,7 @@ A custom, 0 dependencies (yes, not even curses/ncurses), cross-platform VIM-like
 
 ### Demo
 
-https://github.com/user-attachments/assets/cd7cde65-e561-4fa2-8a28-f8812397412d
+https://github.com/user-attachments/assets/9358362c-e1a1-4aac-b171-c2d51b2b0bf5
 
 <hr>
 
