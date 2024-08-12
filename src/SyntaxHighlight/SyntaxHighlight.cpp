@@ -38,9 +38,10 @@ namespace SyntaxHighlight
 	{
 		syntaxContents.push_back(EditorSyntax(filetypes, builtInTypeKeywords, classTypeKeywords, loopKeywords, otherKeywords, singlelineComment, multilineCommentStart, multilineCommentEnd));
 	}
-	EditorSyntax& syntax()
+	EditorSyntax* syntax()
 	{
-		return syntaxContents[syntaxIndex];
+
+			return syntaxIndex < syntaxContents.size() ? &syntaxContents[syntaxIndex] : nullptr;
 	}
 	void initSyntax(const std::string_view& fName)
 	{

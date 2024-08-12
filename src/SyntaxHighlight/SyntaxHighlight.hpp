@@ -40,11 +40,11 @@ namespace SyntaxHighlight{
 		std::string multilineCommentStart;
 		std::string multilineCommentEnd;
 	};
-	void addSyntax(const std::vector<std::string>& filetypes, const std::vector<std::string>& builtInTypeKeywords, const std::vector<std::string>& classTypeKeywords, 
-		const std::vector<std::string>& loopKeywords, const std::vector<std::string>& otherKeywords, 
-		const std::string& singlelineComment, const std::string& multilineCommentStart, const std::string& multilineCommentEnd);
+	void addSyntax(const std::vector<std::string>& filetypes, const std::vector<std::string>& = std::vector<std::string>(), const std::vector<std::string>&  = std::vector<std::string>(),
+		const std::vector<std::string>&  = std::vector<std::string>(), const std::vector<std::string>& = std::vector<std::string>(),
+		const std::string & = std::string{}, const std::string & = std::string{}, const std::string & = std::string{});
 
-	EditorSyntax& syntax();
+	EditorSyntax* syntax();
 
 	void initSyntax(const std::string_view& fName);
 
@@ -75,10 +75,45 @@ namespace SyntaxHighlight{
 		"template", "this", "thread_local", "true", "typedef", "typeid", "typename", "union", "unsigned", "using", "virtual",
 		"void", "volatile", "wchar_t"
 	};
-	static const std::vector<std::string> cppClassTypes{
-		//Some class types included in the STL
-		"string", "vector", "array", "string_view", "atomic", "thread",
-		"uint8_t", "uint16_t", "uint32_t", "uint64_t", "size_t", "int8_t", "int16_t", "int32_t", "int64_t"
+	static const std::vector<std::string> cppClassTypes{ //Nowhere near a complete list, just some that I have used and some extra ones that I know about
+		//Sequence containers
+		"array", "vector", "inplace_vector", "deque", "forward_list", "list",
+
+		//Associative containers
+		"set", "map", "multiset", "multimap",
+
+		//Unordered associative containers
+		"unordered_set", "unordered_map", "unordered_multiset", "unordered_multimap", 
+
+		//Container adapters
+		"stack", "queue", "priority_queue", "flat_set", "flat_multiset", "flat_multimap",
+
+		//Views
+		"span", "mdspan",
+
+		//String stuff
+		"string", "string_view", "basic_string", "basic_string_view", "u8string", "u16string", "u32string", "wstring",
+		"u8string_view", "u16string_view", "u32string_view", "wstring_view"
+
+		//File stuff
+		"basic_filebuf", "filebuf", "basic_ifstream", "ifstream", "basic_ofstream", "ofstream", "basic_fstream", "fstream",
+		"ios_base", "basic_ios", "ios", "wios", "fpos", "io_errc", "is_error_code_enum", "streamoff", "streamsize",
+		"basic_istream", "istream", "wistream", "basic_iostream", "iostream", "wiostream", "basic_ostream", "ostream", "wostream",
+		"basic_stringbuf", "basic_istringstream", "basic_ostringstream", "basic_stringstream", "stringbuf", "wstringbuf", "istringstream",
+		"wistringstream", "ostringstream", "wostringstream", "stringstream", "wstringstream",
+		"path", "filesystem_error", "directory_entry", "directory_iterator", "recursive_directory_iterator", "file_status", "space_info",
+		"file_type", "perms", "perm_options", "copy_options", "directory_options", "file_time_type",
+
+		//Others
+		"any", "bitset", "expected", "initializer_list", "optional", "tuple", "type_index", "variant",
+		"unique_ptr", "shared_ptr", "weak_ptr", "memory_resource", "pointer_traits", "pointer_safety",
+		"allocator", "allocator_traits", "allocation_result", "uses_allocator",
+		"auto_ptr", "atomic", "hash",
+		"int8_t", "uint8_t", "int16_t", "uint16_t", "int32_t", "uint32_t", "int64_t", "uint64_t",
+		"int_fast8_t", "uint_fast8_t", "int_fast16_t", "uint_fast16_t", "int_fast32_t", "uint_fast32_t",
+		"int_fast64_t", "uint_fast64_t", "int_least8_t", "uint_least8_t", "int_least16_t", "uint_least16_t",
+		"int_least32_t", "uint_least32_t", "int_least64_t", "uint_least64_t", "uintmax_t", "uintptr_t", "intmax_t", "intptr_t",
+		"exception", "thread"
 	};
 	static const std::vector<std::string> cppControlKeywords{
 		//Loop/Control keywords

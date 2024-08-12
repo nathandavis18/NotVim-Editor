@@ -581,8 +581,11 @@ size_t Console::addRenderedCursorTabs(const FileHandler::Row& row)
 	return spacesToAdd;
 }
 
+
 void Console::setHighlight(const size_t startingRowNum)
 {
+	if (mWindow->syntax == nullptr) return; //Can't highlight if there is no syntax
+
 	mHighlight.clear();
 	constexpr uint8_t smallestLength = 2;
 	for (size_t i = startingRowNum; i < mWindow->rows + startingRowNum && i < mWindow->fileRows.size(); ++i)
@@ -591,6 +594,11 @@ void Console::setHighlight(const size_t startingRowNum)
 		FileHandler::Row* row = &mWindow->fileRows.at(i);
 		for (size_t j = 0; j <= row->renderedLine.length(); ++j)
 		{
+			if (row->renderedLine[j] >= '0' && row->renderedLine[j] <= '9')
+			{
+				mHighlight.emplace_back(SyntaxHighlight::HighlightType::Number, i, j, 1);
+				continue;
+			}
 			if (!isSeparator(currentWord, row->renderedLine[j]))
 			{
 				currentWord.push_back(row->renderedLine[j]);
@@ -602,13 +610,32 @@ void Console::setHighlight(const size_t startingRowNum)
 			else if (currentWord.length() < smallestLength) continue;
 			else
 			{
-				if (currentWord == mWindow->syntax.singlelineComment)
+				if (currentWord == mWindow->syntax->singlelineComment)
 				{
 					mHighlight.emplace_back(SyntaxHighlight::HighlightType::Comment, i, j - currentWord.length(), row->renderedLine.length() - j + currentWord.length());
 					break;
 				}
-				else if (currentWord == mWindow->syntax.multilineCommentStart) //This area needs some serious work but the other highlights seem to work properly
+				else if (currentWord == mWindow->syntax->multilineCommentStart || (currentWord.find("\"") != std::string::npos)  || (currentWord.find("'") != std::string::npos)) //This area needs some serious work but the other highlights seem to work properly
 				{
+					SyntaxHighlight::HighlightType hlType;
+					size_t stringStart;
+					std::string endStr;
+					if ((stringStart = currentWord.find("\"") != std::string::npos))
+					{
+						hlType = SyntaxHighlight::HighlightType::String;
+						endStr = "\"";
+					}
+					else if ((stringStart = currentWord.find("'") != std::string::npos))
+					{
+						hlType = SyntaxHighlight::HighlightType::String;
+						endStr = "'";
+					}
+					else
+					{
+						hlType = SyntaxHighlight::HighlightType::MultilineComment;
+						endStr = mWindow->syntax->multilineCommentEnd;
+					}
+
 					size_t currentCol = j + 1;
 					size_t currentRowCommentStart = j - currentWord.length();
 					size_t currentRow = i;
@@ -616,13 +643,13 @@ void Console::setHighlight(const size_t startingRowNum)
 					while (true)
 					{
 						currentFileRow = &mWindow->fileRows[currentRow];
-						if (currentCol >= mWindow->syntax.multilineCommentEnd.length() - 1 && currentCol < currentFileRow->renderedLine.length())
+						if (currentCol >= endStr.length() - 1 && currentCol < currentFileRow->renderedLine.length())
 						{
-							std::string wordToCheck = currentFileRow->renderedLine.substr(currentCol - mWindow->syntax.multilineCommentEnd.length() + 1, mWindow->syntax.multilineCommentEnd.length());
-							if (wordToCheck == mWindow->syntax.multilineCommentEnd)
+							std::string wordToCheck = currentFileRow->renderedLine.substr(currentCol - endStr.length() + 1, endStr.length());
+							if (wordToCheck == endStr)
 							{
 								size_t length = currentCol + 1 - currentRowCommentStart;
-								mHighlight.emplace_back(SyntaxHighlight::HighlightType::MultilineComment, currentRow, currentRowCommentStart, length);
+								mHighlight.emplace_back(hlType, currentRow, currentRowCommentStart, length);
 								i = currentRow;
 								j = currentCol;
 								row = &mWindow->fileRows.at(i);
@@ -635,7 +662,7 @@ void Console::setHighlight(const size_t startingRowNum)
 						}
 						else if (currentCol >= currentFileRow->renderedLine.length())
 						{
-							mHighlight.emplace_back(SyntaxHighlight::HighlightType::MultilineComment, currentRow, currentRowCommentStart, currentFileRow->renderedLine.length() - currentRowCommentStart);
+							mHighlight.emplace_back(hlType, currentRow, currentRowCommentStart, currentFileRow->renderedLine.length() - currentRowCommentStart);
 							++currentRow;
 							currentCol = 0;
 							currentRowCommentStart = 0;
@@ -653,7 +680,7 @@ void Console::setHighlight(const size_t startingRowNum)
 				}
 				else
 				{
-					for (const auto& word : mWindow->syntax.builtInTypeKeywords)
+					for (const auto& word : mWindow->syntax->builtInTypeKeywords)
 					{
 						if (currentWord == word)
 						{
@@ -661,7 +688,7 @@ void Console::setHighlight(const size_t startingRowNum)
 							goto nextword;
 						}
 					}
-					for (const auto& word : mWindow->syntax.loopKeywords)
+					for (const auto& word : mWindow->syntax->loopKeywords)
 					{
 						if (currentWord == word)
 						{
@@ -669,7 +696,7 @@ void Console::setHighlight(const size_t startingRowNum)
 							goto nextword;
 						}
 					}
-					for (const auto& word : mWindow->syntax.classTypeKeywords)
+					for (const auto& word : mWindow->syntax->classTypeKeywords)
 					{
 						if (currentWord == word)
 						{
@@ -677,7 +704,7 @@ void Console::setHighlight(const size_t startingRowNum)
 							goto nextword;
 						}
 					}
-					for (const auto& word : mWindow->syntax.otherKeywords)
+					for (const auto& word : mWindow->syntax->otherKeywords)
 					{
 						if (currentWord == word)
 						{
@@ -696,7 +723,7 @@ void Console::setHighlight(const size_t startingRowNum)
 
 bool Console::isSeparator(std::string& wordToCheck, const uint8_t currentChar)
 {
-	if (wordToCheck == mWindow->syntax.multilineCommentStart || wordToCheck == mWindow->syntax.multilineCommentEnd || wordToCheck == mWindow->syntax.singlelineComment) return true;
+	if (wordToCheck == mWindow->syntax->multilineCommentStart || wordToCheck == mWindow->syntax->multilineCommentEnd || wordToCheck == mWindow->syntax->singlelineComment) return true;
 	return (currentChar == '\0' || currentChar == ' ' || (strchr(",.()+-/*=~%[];{}:<>\n\t", currentChar) != nullptr));
 }
 //=================================================================== OS-SPECIFIC FUNCTIONS =============================================================================\\

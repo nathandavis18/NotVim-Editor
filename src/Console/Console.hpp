@@ -77,7 +77,7 @@ private:
 
 		bool dirty;
 		bool rawModeEnabled;
-		SyntaxHighlight::EditorSyntax& syntax;
+		SyntaxHighlight::EditorSyntax* syntax;
 	};
 
 	struct HighlightLocations
