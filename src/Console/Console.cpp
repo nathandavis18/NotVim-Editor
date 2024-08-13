@@ -742,11 +742,6 @@ void Console::setHighlight(const size_t startingRowNum)
 		}
 	}
 }
-
-bool Console::isSeparator(const uint8_t currentChar)
-{
-	return (currentChar == '\0' || currentChar == ' ' || (strchr(",.()+-/*=~%[];{}:<>\"'\n\t", currentChar) != nullptr));
-}
 //=================================================================== OS-SPECIFIC FUNCTIONS =============================================================================\\
 
 #ifdef _WIN32
