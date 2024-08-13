@@ -29,13 +29,17 @@ SOFTWARE.
 #ifdef _WIN32
 #include <conio.h>
 #elif defined(__linux__) || defined(__APPLE__)
-uint8_t _getch();
+uint16_t _getch();
 #endif
 
 using KeyActions::KeyAction;
 
 namespace InputHandler
 {
+	/// <summary>
+	/// Filters through some sequences to determine which key was pressed
+	/// </summary>
+	/// <returns></returns>
 	uint16_t getInput()
 	{
 		uint8_t input = _getch();
@@ -139,7 +143,7 @@ namespace InputHandler
 	/// </summary>
 	void handleInput(const uint16_t input)
 	{
-		KeyAction key = static_cast<KeyAction>(input);
+		KeyAction key = static_cast<KeyAction>(input); //If there is an associated KeyAction
 		switch (key)
 		{
 		case KeyAction::Esc:
@@ -170,6 +174,10 @@ namespace InputHandler
 }
 
 #if defined(__linux__) || defined(__APPLE__)
+/// <summary>
+/// A custom implementation of the _getch function
+/// </summary>
+/// <returns></returns>
 uint16_t _getch()
 {
 	uint8_t nread;

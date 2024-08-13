@@ -86,12 +86,12 @@ private:
 		size_t row, col, length;
 	};
 
-	static void updateRenderedColor(std::string&, const size_t row, const size_t colOffset);
 	static void deleteRow(const size_t rowNum);
 	static void fixRenderedCursorPosition(const FileHandler::Row&);
 	static void replaceRenderedStringTabs(std::string&);
 	static size_t addRenderedCursorTabs(const FileHandler::Row&);
 	static bool isSeparator(const uint8_t currentChar);
+	static void updateRenderedColor(std::string&, const size_t row, const size_t colOffset);
 	static void findEndMarker(std::string& currentWord, size_t& row, size_t& posOffset, size_t& findPos, const std::string& strToFind, const SyntaxHighlight::HighlightType);
 	static void setHighlight(const size_t rowNum);
 
