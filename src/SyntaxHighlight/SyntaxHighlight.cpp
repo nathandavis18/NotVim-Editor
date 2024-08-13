@@ -30,7 +30,7 @@ namespace SyntaxHighlight
 	void setColors();
 
 	std::vector<EditorSyntax> syntaxContents;
-	uint8_t syntaxIndex = 0;
+	int8_t syntaxIndex = -1;
 
 	void addSyntax(const std::vector<std::string>& filetypes, const std::vector<std::string>& builtInTypeKeywords,
 		const std::vector<std::string>& loopKeywords, const std::vector<std::string>& otherKeywords, const std::string& singlelineComment,
@@ -40,8 +40,7 @@ namespace SyntaxHighlight
 	}
 	EditorSyntax* syntax()
 	{
-
-			return syntaxIndex < syntaxContents.size() ? &syntaxContents[syntaxIndex] : nullptr;
+			return syntaxIndex >= 0 ? &syntaxContents[syntaxIndex] : nullptr;
 	}
 	void initSyntax(const std::string_view& fName)
 	{
