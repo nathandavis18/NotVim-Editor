@@ -71,7 +71,7 @@ namespace SyntaxHighlight
 	/// <returns> nullptr if no syntax, or a pointer to the correct syntax </returns>
 	EditorSyntax* syntax()
 	{
-			return syntaxIndex >= 0 ? &syntaxContents[syntaxIndex] : nullptr;
+		return syntaxIndex >= 0 ? &syntaxContents[syntaxIndex] : nullptr;
 	}
 
 	/// <summary>
