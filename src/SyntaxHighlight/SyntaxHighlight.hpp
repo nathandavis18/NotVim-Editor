@@ -83,6 +83,6 @@ namespace SyntaxHighlight{
 	};
 	static const std::vector<std::string> cppOtherKeywords{
 		//Some other keywords, such as macro definitions
-		"#define", "#ifdef", "#ifndef", "#if", "defined"
+		"#define", "#ifdef", "#ifndef", "#if", "defined", "#include"
 	}; 
 }
