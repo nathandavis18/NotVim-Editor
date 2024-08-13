@@ -581,150 +581,148 @@ size_t Console::addRenderedCursorTabs(const FileHandler::Row& row)
 	return spacesToAdd;
 }
 
+void Console::findEndMarker(std::string& currentWord, size_t& row, size_t& posOffset, size_t& findPos, const std::string& strToFind, const SyntaxHighlight::HighlightType hlType)
+{
+	posOffset += findPos;
+	currentWord = currentWord.substr(findPos);
+	size_t endPos;
+	uint8_t offset = strToFind.length();
+	while ((endPos = currentWord.find(strToFind, offset)) == std::string::npos)
+	{
+		offset = 0;
+		mHighlight.emplace_back(hlType, row, posOffset, currentWord.length());
+		findPos = 0;
+		posOffset = 0;
+		++row;
+		if (row >= mWindow->fileRows.size())
+		{
+			currentWord.clear();
+			return;
+		}
+		currentWord = mWindow->fileRows.at(row).renderedLine;
+	}
+	mHighlight.emplace_back(hlType, row, posOffset, endPos + strToFind.length());
+	currentWord = currentWord.substr(endPos + strToFind.length());
+	posOffset += endPos + strToFind.length();
+}
 
 void Console::setHighlight(const size_t startingRowNum)
 {
 	if (mWindow->syntax == nullptr) return; //Can't highlight if there is no syntax
 
+	std::string separators = " \"',.()+-/*=~%;:[]{}<>";
 	mHighlight.clear();
-	constexpr uint8_t smallestLength = 2;
-	for (size_t i = startingRowNum; i < mWindow->rows + startingRowNum && i < mWindow->fileRows.size(); ++i)
+	for (size_t i = startingRowNum; i < mWindow->fileRows.size(); ++i)
 	{
-		std::string currentWord;
+		if (i > mWindow->rowOffset + mWindow->rows) return;
+
 		FileHandler::Row* row = &mWindow->fileRows.at(i);
-		for (size_t j = 0; j <= row->renderedLine.length(); ++j)
+
+		std::string currentWord = row->renderedLine;
+		size_t findPos, posOffset = 0;
+		const uint8_t singlelineCommentLength = mWindow->syntax->singlelineComment.length();
+		const uint8_t multilineCommentLength = mWindow->syntax->multilineCommentStart.length();
+
+		while ((findPos = currentWord.find_first_of(separators)) != std::string::npos)
 		{
-			if (row->renderedLine[j] >= '0' && row->renderedLine[j] <= '9')
+			row = &mWindow->fileRows.at(i);
+
+			std::string wordToCheck = currentWord.substr(0, findPos);
+			if (wordToCheck.find_first_not_of("0123456789") == std::string::npos && !wordToCheck.empty())
 			{
-				mHighlight.emplace_back(SyntaxHighlight::HighlightType::Number, i, j, 1);
-				continue;
+				mHighlight.emplace_back(SyntaxHighlight::HighlightType::Number, i, posOffset, wordToCheck.length());
 			}
-			if (!isSeparator(currentWord, row->renderedLine[j]))
-			{
-				currentWord.push_back(row->renderedLine[j]);
-			}
-			else if ((row->renderedLine[j] == '/' || row->renderedLine[j] == '*') && currentWord.length() < smallestLength)
-			{
-				currentWord.push_back(row->renderedLine[j]);
-			}
-			else if (currentWord.length() < smallestLength) continue;
 			else
 			{
-				if (currentWord == mWindow->syntax->singlelineComment)
+				for (const auto& type : mWindow->syntax->builtInTypeKeywords)
 				{
-					mHighlight.emplace_back(SyntaxHighlight::HighlightType::Comment, i, j - currentWord.length(), row->renderedLine.length() - j + currentWord.length());
-					break;
-				}
-				else if (currentWord == mWindow->syntax->multilineCommentStart || (currentWord.find("\"") != std::string::npos)  || (currentWord.find("'") != std::string::npos)) //This area needs some serious work but the other highlights seem to work properly
-				{
-					SyntaxHighlight::HighlightType hlType;
-					size_t stringStart;
-					std::string endStr;
-					if ((stringStart = currentWord.find("\"") != std::string::npos))
+					if (type == wordToCheck)
 					{
-						hlType = SyntaxHighlight::HighlightType::String;
-						endStr = "\"";
-					}
-					else if ((stringStart = currentWord.find("'") != std::string::npos))
-					{
-						hlType = SyntaxHighlight::HighlightType::String;
-						endStr = "'";
-					}
-					else
-					{
-						hlType = SyntaxHighlight::HighlightType::MultilineComment;
-						endStr = mWindow->syntax->multilineCommentEnd;
-					}
-
-					size_t currentCol = j + 1;
-					size_t currentRowCommentStart = j - currentWord.length();
-					size_t currentRow = i;
-					FileHandler::Row* currentFileRow;
-					while (true)
-					{
-						currentFileRow = &mWindow->fileRows[currentRow];
-						if (currentCol >= endStr.length() - 1 && currentCol < currentFileRow->renderedLine.length())
-						{
-							std::string wordToCheck = currentFileRow->renderedLine.substr(currentCol - endStr.length() + 1, endStr.length());
-							if (wordToCheck == endStr)
-							{
-								size_t length = currentCol + 1 - currentRowCommentStart;
-								mHighlight.emplace_back(hlType, currentRow, currentRowCommentStart, length);
-								i = currentRow;
-								j = currentCol;
-								row = &mWindow->fileRows.at(i);
-								goto nextword;
-							}
-							else
-							{
-								++currentCol;
-							}
-						}
-						else if (currentCol >= currentFileRow->renderedLine.length())
-						{
-							mHighlight.emplace_back(hlType, currentRow, currentRowCommentStart, currentFileRow->renderedLine.length() - currentRowCommentStart);
-							++currentRow;
-							currentCol = 0;
-							currentRowCommentStart = 0;
-						}
-						else
-						{
-							++currentCol;
-						}
-
-						if (currentRow >= mWindow->fileRows.size())
-						{
-							return;
-						}
+						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordBuiltInType, i, posOffset, wordToCheck.length());
+						break;
 					}
 				}
-				else
+				for (const auto& control : mWindow->syntax->loopKeywords)
 				{
-					for (const auto& word : mWindow->syntax->builtInTypeKeywords)
+					if (control == wordToCheck)
 					{
-						if (currentWord == word)
-						{
-							mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordBuiltInType, i, j - currentWord.length(), currentWord.length());
-							goto nextword;
-						}
+						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordControl, i, posOffset, wordToCheck.length());
+						break;
 					}
-					for (const auto& word : mWindow->syntax->loopKeywords)
+				}
+				for (const auto& other : mWindow->syntax->otherKeywords)
+				{
+					if (other == wordToCheck)
 					{
-						if (currentWord == word)
-						{
-							mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordControl, i, j - currentWord.length(), currentWord.length());
-							goto nextword;
-						}
+						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordOther, i, posOffset, wordToCheck.length());
+						break;
 					}
-					for (const auto& word : mWindow->syntax->classTypeKeywords)
-					{
-						if (currentWord == word)
-						{
-							mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordClassType, i, j - currentWord.length(), currentWord.length());
-							goto nextword;
-						}
-					}
-					for (const auto& word : mWindow->syntax->otherKeywords)
-					{
-						if (currentWord == word)
-						{
-							mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordOther, i, j - currentWord.length(), currentWord.length());
-							goto nextword;
-						}
-					}
-				nextword:
-					currentWord.clear();
-					continue;
 				}
 			}
+
+			if (currentWord[findPos] == '"' || currentWord[findPos] == '\'')
+			{
+				findEndMarker(currentWord, i, posOffset, findPos, std::string() + currentWord[findPos], SyntaxHighlight::HighlightType::String);
+			}
+			else if (findPos + multilineCommentLength - 1 < currentWord.length() && currentWord.substr(findPos, multilineCommentLength) == mWindow->syntax->multilineCommentStart)
+			{
+				findEndMarker(currentWord, i, posOffset, findPos, mWindow->syntax->multilineCommentEnd, SyntaxHighlight::HighlightType::MultilineComment);
+			}
+			else if (findPos + singlelineCommentLength - 1 < currentWord.length() && currentWord.substr(findPos, singlelineCommentLength) == mWindow->syntax->singlelineComment)
+			{
+				mHighlight.emplace_back(SyntaxHighlight::HighlightType::Comment, i, posOffset, row->renderedLine.length() - posOffset);
+				goto nextrow;
+			}
+			else
+			{
+				posOffset += findPos + 1;
+				currentWord = currentWord.substr(findPos + 1);
+				continue;
+			}
+		}
+		if (!currentWord.empty())
+		{
+			if (currentWord.find_first_not_of("0123456789") == std::string::npos)
+			{
+				mHighlight.emplace_back(SyntaxHighlight::HighlightType::Number, i, posOffset, currentWord.length());
+				continue;
+			}
+			else
+			{
+				for (const auto& type : mWindow->syntax->builtInTypeKeywords)
+				{
+					if (type == currentWord)
+					{
+						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordBuiltInType, i, posOffset, currentWord.length());
+						goto nextrow;
+					}
+				}
+				for (const auto& control : mWindow->syntax->loopKeywords)
+				{
+					if (control == currentWord)
+					{
+						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordControl, i, posOffset, currentWord.length());
+						goto nextrow;
+					}
+				}
+				for (const auto& other : mWindow->syntax->otherKeywords)
+				{
+					if (other == currentWord)
+					{
+						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordOther, i, posOffset, currentWord.length());
+						goto nextrow;
+					}
+				}
+			}
+		nextrow:
+			continue;
 		}
 	}
 }
 
-bool Console::isSeparator(std::string& wordToCheck, const uint8_t currentChar)
+bool Console::isSeparator(const uint8_t currentChar)
 {
-	if (wordToCheck == mWindow->syntax->multilineCommentStart || wordToCheck == mWindow->syntax->multilineCommentEnd || wordToCheck == mWindow->syntax->singlelineComment) return true;
-	return (currentChar == '\0' || currentChar == ' ' || (strchr(",.()+-/*=~%[];{}:<>\n\t", currentChar) != nullptr));
+	return (currentChar == '\0' || currentChar == ' ' || (strchr(",.()+-/*=~%[];{}:<>\"'\n\t", currentChar) != nullptr));
 }
 //=================================================================== OS-SPECIFIC FUNCTIONS =============================================================================\\
 

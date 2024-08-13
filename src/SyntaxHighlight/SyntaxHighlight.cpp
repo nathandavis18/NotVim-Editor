@@ -32,11 +32,11 @@ namespace SyntaxHighlight
 	std::vector<EditorSyntax> syntaxContents;
 	uint8_t syntaxIndex = 0;
 
-	void addSyntax(const std::vector<std::string>& filetypes, const std::vector<std::string>& builtInTypeKeywords, const std::vector<std::string>& classTypeKeywords,
+	void addSyntax(const std::vector<std::string>& filetypes, const std::vector<std::string>& builtInTypeKeywords,
 		const std::vector<std::string>& loopKeywords, const std::vector<std::string>& otherKeywords, const std::string& singlelineComment,
 		const std::string& multilineCommentStart, const std::string& multilineCommentEnd)
 	{
-		syntaxContents.push_back(EditorSyntax(filetypes, builtInTypeKeywords, classTypeKeywords, loopKeywords, otherKeywords, singlelineComment, multilineCommentStart, multilineCommentEnd));
+		syntaxContents.push_back(EditorSyntax(filetypes, builtInTypeKeywords, loopKeywords, otherKeywords, singlelineComment, multilineCommentStart, multilineCommentEnd));
 	}
 	EditorSyntax* syntax()
 	{
@@ -45,7 +45,7 @@ namespace SyntaxHighlight
 	}
 	void initSyntax(const std::string_view& fName)
 	{
-		addSyntax(cppFiletypes, cppBuiltInTypes, cppClassTypes, cppControlKeywords, cppOtherKeywords, "//", "/*", "*/");
+		addSyntax(cppFiletypes, cppBuiltInTypes, cppControlKeywords, cppOtherKeywords, "//", "/*", "*/");
 
 		std::string extension;
 		size_t extensionIndex;
@@ -82,7 +82,6 @@ namespace SyntaxHighlight
 		colors[static_cast<int>(HighlightType::Comment)] = 40;
 		colors[static_cast<int>(HighlightType::MultilineComment)] = 28;
 		colors[static_cast<int>(HighlightType::KeywordBuiltInType)] = 196;
-		colors[static_cast<int>(HighlightType::KeywordClassType)] = 226;
 		colors[static_cast<int>(HighlightType::KeywordControl)] = 177;
 		colors[static_cast<int>(HighlightType::KeywordOther)] = 105;
 		colors[static_cast<int>(HighlightType::String)] = 215;
