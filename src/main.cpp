@@ -46,7 +46,7 @@ int main(int argc, const char** argv)
 {
 #ifndef NDEBUG
 	argc = 2;
-	argv[1] = "test.txt";
+	argv[1] = "test.cpp";
 #endif
 	if (argc != 2)
 	{

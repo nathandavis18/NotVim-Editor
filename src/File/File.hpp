@@ -36,8 +36,7 @@ namespace FileHandler
 
 	std::string& fileName(const std::string_view& fName = "");
 	std::vector<Row> loadFileContents();
-	void saveFile(const std::string_view& newContents);
-
 	std::vector<Row> loadRows(std::string&&);
+	void saveFile(const std::string_view& newContents);
 
 }

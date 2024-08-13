@@ -62,6 +62,9 @@ namespace SyntaxHighlight{
 
 	uint8_t color(HighlightType);
 
+
+	//================================================ CPP KEYWORDS =================================================================\\
+
 	static const std::vector<std::string> cppFiletypes{ ".cpp", ".cc", ".cxx", ".hpp", ".h", ".hxx", ".hh" };
 	static const std::vector<std::string> cppBuiltInTypes{
 		//Built-in types and main keywords

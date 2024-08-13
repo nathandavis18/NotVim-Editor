@@ -26,22 +26,58 @@ SOFTWARE.
 
 namespace SyntaxHighlight
 {
-	std::array<uint8_t, static_cast<int>(HighlightType::EnumCount)> colors;
-	void setColors();
-
-	std::vector<EditorSyntax> syntaxContents;
 	int8_t syntaxIndex = -1;
+	std::array<uint8_t, static_cast<int>(HighlightType::EnumCount)> colors;
+	std::vector<EditorSyntax> syntaxContents;
 
+	/// <summary>
+	/// Setting the color values for each type
+	/// Color IDs correspond to the IDs found at this link: https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797#:~:text=Where%20%7BID%7D%20should%20be%20replaced%20with%20the%20color%20index%20from%200%20to%20255%20of%20the%20following%20color%20table%3A
+	/// </summary>
+	void setColors()
+	{
+		colors[static_cast<int>(HighlightType::Normal)] = 255; //White
+		colors[static_cast<int>(HighlightType::Comment)] = 40; //Light Green
+		colors[static_cast<int>(HighlightType::MultilineComment)] = 28; //Dark Green
+		colors[static_cast<int>(HighlightType::KeywordBuiltInType)] = 196; //Red
+		colors[static_cast<int>(HighlightType::KeywordControl)] = 177; //Pinkish Purple
+		colors[static_cast<int>(HighlightType::KeywordOther)] = 105; //Purple
+		colors[static_cast<int>(HighlightType::String)] = 215; //Orange
+		colors[static_cast<int>(HighlightType::Number)] = 6; //Blue
+	}
+
+
+	/// <summary>
+	/// Adds a highlight syntax to the syntaxContents vector
+	/// As of now, doesn't really serve a good purpose, but design changes later on may require/use this so it is staying for now
+	/// </summary>
+	/// <param name="filetypes"></param>
+	/// <param name="builtInTypeKeywords"></param>
+	/// <param name="loopKeywords"></param>
+	/// <param name="otherKeywords"></param>
+	/// <param name="singlelineComment"></param>
+	/// <param name="multilineCommentStart"></param>
+	/// <param name="multilineCommentEnd"></param>
 	void addSyntax(const std::vector<std::string>& filetypes, const std::vector<std::string>& builtInTypeKeywords,
 		const std::vector<std::string>& loopKeywords, const std::vector<std::string>& otherKeywords, const std::string& singlelineComment,
 		const std::string& multilineCommentStart, const std::string& multilineCommentEnd)
 	{
-		syntaxContents.push_back(EditorSyntax(filetypes, builtInTypeKeywords, loopKeywords, otherKeywords, singlelineComment, multilineCommentStart, multilineCommentEnd));
+		syntaxContents.emplace_back(filetypes, builtInTypeKeywords, loopKeywords, otherKeywords, singlelineComment, multilineCommentStart, multilineCommentEnd);
 	}
+
+	/// <summary>
+	/// Returns a pointer (or nullptr) to the current syntax being used.
+	/// </summary>
+	/// <returns> nullptr if no syntax, or a pointer to the correct syntax </returns>
 	EditorSyntax* syntax()
 	{
 			return syntaxIndex >= 0 ? &syntaxContents[syntaxIndex] : nullptr;
 	}
+
+	/// <summary>
+	/// Initializes the syntax index and vector based on the current filetype
+	/// </summary>
+	/// <param name="fName"></param>
 	void initSyntax(const std::string_view& fName)
 	{
 		addSyntax(cppFiletypes, cppBuiltInTypes, cppControlKeywords, cppOtherKeywords, "//", "/*", "*/");
@@ -56,6 +92,7 @@ namespace SyntaxHighlight
 		{
 			return; //There isn't a syntax, so we can't provide syntax highlighting. 
 		}
+
 		for (uint8_t i = 0; i < syntaxContents.size(); ++i)
 		{
 			for (const auto& fileType : syntaxContents[i].filematch)
@@ -71,21 +108,10 @@ namespace SyntaxHighlight
 	}
 
 	/// <summary>
-	/// Setting the color values for each type
-	/// Color IDs correspond to the IDs found at this link: https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797#:~:text=Where%20%7BID%7D%20should%20be%20replaced%20with%20the%20color%20index%20from%200%20to%20255%20of%20the%20following%20color%20table%3A
-	/// 
+	/// Returns the color ID of a given highlight type
 	/// </summary>
-	void setColors()
-	{
-		colors[static_cast<int>(HighlightType::Normal)] = 255;
-		colors[static_cast<int>(HighlightType::Comment)] = 40;
-		colors[static_cast<int>(HighlightType::MultilineComment)] = 28;
-		colors[static_cast<int>(HighlightType::KeywordBuiltInType)] = 196;
-		colors[static_cast<int>(HighlightType::KeywordControl)] = 177;
-		colors[static_cast<int>(HighlightType::KeywordOther)] = 105;
-		colors[static_cast<int>(HighlightType::String)] = 215;
-		colors[static_cast<int>(HighlightType::Number)] = 6;
-	}
+	/// <param name="type"></param>
+	/// <returns></returns>
 	uint8_t color(HighlightType type)
 	{
 		return colors[static_cast<int>(type)];

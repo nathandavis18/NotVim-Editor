@@ -30,6 +30,11 @@ namespace FileHandler
 {
 	std::string _fileName = "";
 
+	/// <summary>
+	/// Gets and sets the _fileName property
+	/// </summary>
+	/// <param name="fName"></param>
+	/// <returns></returns>
 	std::string& fileName(const std::string_view& fName)
 	{
 		if (!fName.empty())
@@ -39,6 +44,10 @@ namespace FileHandler
 		return _fileName;
 	}
 
+	/// <summary>
+	/// Loads a stringstream with file contents and returns the vector of rows built from the file
+	/// </summary>
+	/// <returns></returns>
 	std::vector<Row> loadFileContents()
 	{
 		std::filesystem::path path = std::filesystem::current_path() / _fileName;
@@ -51,7 +60,7 @@ namespace FileHandler
 	}
 
 	/// <summary>
-	/// Loads the
+	/// Builds a vector of rows from the file
 	/// </summary>
 	/// <param name="str"></param>
 	std::vector<Row> loadRows(std::string&& str)
