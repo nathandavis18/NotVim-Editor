@@ -5,7 +5,7 @@ A custom, 0 dependencies (yes, not even curses/ncurses), cross-platform VIM-like
 
 ### Demo
 
-https://github.com/user-attachments/assets/9358362c-e1a1-4aac-b171-c2d51b2b0bf5
+https://github.com/user-attachments/assets/bc71a3f9-f7f1-4bb0-9f69-fb3d8aef2c8a
 
 <hr>
 
@@ -49,6 +49,7 @@ This executable is a standalone executable, so you may also add this file to you
 
  - Arrow keys cannot be held to quickly navigate through the screen on Linux.
  - Cursor does not save rendered position, but rather position within the file, so cursor may appear to jump around when moving up/down
+ - Screen randomly flickers (not sure why, but I am working on finding the culprit)
 
 <hr>
 
