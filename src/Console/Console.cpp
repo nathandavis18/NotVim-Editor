@@ -649,7 +649,7 @@ void Console::setHighlight(const size_t startingRowNum)
 
 			std::string wordToCheck = currentWord.substr(0, findPos); //The word/character sequence before the separator character
 
-			if (wordToCheck.find_first_not_of("0123456789") == std::string::npos && !wordToCheck.empty())
+			if (!wordToCheck.empty() && wordToCheck.find_first_not_of("0123456789") == std::string::npos)
 			{
 				mHighlight.emplace_back(SyntaxHighlight::HighlightType::Number, i, posOffset, wordToCheck.length());
 			}
@@ -660,7 +660,7 @@ void Console::setHighlight(const size_t startingRowNum)
 					if (type == wordToCheck)
 					{
 						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordBuiltInType, i, posOffset, wordToCheck.length());
-						break;
+						goto commentcheck;
 					}
 				}
 				for (const auto& control : mWindow->syntax->loopKeywords)
@@ -668,7 +668,7 @@ void Console::setHighlight(const size_t startingRowNum)
 					if (control == wordToCheck)
 					{
 						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordControl, i, posOffset, wordToCheck.length());
-						break;
+						goto commentcheck;
 					}
 				}
 				for (const auto& other : mWindow->syntax->otherKeywords)
@@ -676,11 +676,12 @@ void Console::setHighlight(const size_t startingRowNum)
 					if (other == wordToCheck)
 					{
 						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordOther, i, posOffset, wordToCheck.length());
-						break;
+						goto commentcheck;
 					}
 				}
 			}
 
+		commentcheck:
 			if (currentWord[findPos] == '"' || currentWord[findPos] == '\'') //String highlights are open until the next string marker of the same type is found
 			{
 				findEndMarker(currentWord, i, posOffset, findPos, std::string() + currentWord[findPos], SyntaxHighlight::HighlightType::String);
@@ -693,7 +694,7 @@ void Console::setHighlight(const size_t startingRowNum)
 			else if (findPos + singlelineCommentLength - 1 < currentWord.length() //Singleline comments take the rest of the row
 				&& currentWord.substr(findPos, singlelineCommentLength) == mWindow->syntax->singlelineComment)
 			{
-				mHighlight.emplace_back(SyntaxHighlight::HighlightType::Comment, i, posOffset, row->renderedLine.length() - posOffset);
+				mHighlight.emplace_back(SyntaxHighlight::HighlightType::Comment, i, findPos + posOffset, row->renderedLine.length() - (findPos + posOffset));
 				goto nextrow;
 			}
 			else
