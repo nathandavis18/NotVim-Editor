@@ -64,14 +64,14 @@ int main(int argc, const char** argv)
 		while (Console::mode() == Mode::CommandMode || Console::mode() == Mode::ReadMode)
 		{
 			Console::refreshScreen();
-			const uint16_t inputCode = InputHandler::getInput();
-			if(inputCode) InputHandler::doCommand(inputCode);
+			const KeyActions::KeyAction inputCode = InputHandler::getInput();
+			if(inputCode != KeyActions::KeyAction::None) InputHandler::doCommand(static_cast<uint8_t>(inputCode));
 		}
 		while (Console::mode() == Mode::EditMode)
 		{
 			Console::refreshScreen();
-			const uint16_t inputCode = InputHandler::getInput();
-			if (inputCode) InputHandler::handleInput(inputCode);
+			const KeyActions::KeyAction inputCode = InputHandler::getInput();
+			if (inputCode != KeyActions::KeyAction::None) InputHandler::handleInput(inputCode);
 		}
 		if (Console::mode() == Mode::ExitMode)
 		{

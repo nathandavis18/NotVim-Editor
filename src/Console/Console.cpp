@@ -79,6 +79,8 @@ void Console::refreshScreen()
 	for (size_t r = 0; r < mWindow->rows && r < mWindow->fileRows.size(); ++r)
 	{
 		size_t fileRow = mWindow->rowOffset + r;
+		if (fileRow >= mWindow->fileRows.size()) break;
+
 		FileHandler::Row& row = mWindow->fileRows.at(fileRow);
 		row.renderedLine = row.line;
 		if (row.renderedLine.length() > 0)
@@ -87,7 +89,7 @@ void Console::refreshScreen()
 		}
 	}
 
-	setHighlight(mWindow->rowOffset);
+	setHighlight();
 
 	for (size_t y = 0; y < mWindow->rows; ++y) //For each row within the displayable range
 	{
@@ -139,7 +141,6 @@ void Console::refreshScreen()
 		renderBuffer.append("\x1b[0K\r\n");
 	}
 
-	renderBuffer.append("\x1b[0K");
 	renderBuffer.append("\x1b[7m"); //Set to inverse color mode (white background dark text) for status row
 
 	std::string status, rStatus, modeToDisplay;
@@ -192,7 +193,6 @@ void Console::refreshScreen()
 	}
 
 	renderBuffer.append("\x1b[0m\r\n"); //Set to default mode
-	renderBuffer.append("\x1b[0K");
 
 	std::string cursorPosition = std::format("\x1b[{};{}f", mWindow->renderedCursorY + 1, mWindow->renderedCursorX + 1); //Move the cursor to this position
 	renderBuffer.append(cursorPosition);
@@ -210,7 +210,7 @@ void Console::moveCursor(const KeyActions::KeyAction key)
 	switch (key)
 	{
 	case KeyActions::KeyAction::ArrowLeft:
-		if (mWindow->fileCursorX == 0 && mWindow->fileCursorY == 0) return;
+		if (mWindow->fileCursorX == 0 && mWindow->fileCursorY == 0) return; //Can't move any farther left if we are at the beginning of the file
 
 		if (mWindow->fileCursorX == 0)
 		{
@@ -225,7 +225,7 @@ void Console::moveCursor(const KeyActions::KeyAction key)
 	case KeyActions::KeyAction::ArrowRight:
 		if (mWindow->fileCursorY == mWindow->fileRows.size() - 1)
 		{
-			if (mWindow->fileCursorX == mWindow->fileRows.at(mWindow->fileCursorY).line.length()) return;
+			if (mWindow->fileCursorX == mWindow->fileRows.at(mWindow->fileCursorY).line.length()) return; //Can't move any farther right if we are at the end of the file
 		}
 
 		if (mWindow->fileCursorX == mWindow->fileRows.at(mWindow->fileCursorY).line.length())
@@ -326,7 +326,7 @@ void Console::addRow()
 }
 
 /// <summary>
-/// Deletes a uint8_tacter behind/ahead of the cursor depending on key pressed
+/// Deletes a character behind/ahead of the cursor depending on key pressed
 /// </summary>
 /// <param name="key"></param>
 void Console::deleteChar(const KeyActions::KeyAction key)
@@ -367,9 +367,9 @@ void Console::deleteChar(const KeyActions::KeyAction key)
 }
 
 /// <summary>
-/// Inserts a given uint8_tacter at the current position and moves the cursor forward
+/// Inserts a given character at the current position and moves the cursor forward
 /// </summary>
-/// <param name="c"></param>
+/// <param name="c">The character to insert</param>
 void Console::insertChar(const uint8_t c)
 {
 	FileHandler::Row& row = mWindow->fileRows.at(mWindow->fileCursorY);
@@ -391,6 +391,7 @@ bool Console::isDirty()
 
 /// <summary>
 /// Saves the file and sets dirty = false
+/// Appends a newline character to the end of each row, assuming it's not the last row so that when written to the file the contents are saved properly
 /// </summary>
 void Console::save()
 {
@@ -411,7 +412,7 @@ void Console::save()
 }
 
 /// <summary>
-/// Moves the rendered cursor to the command line
+/// Moves the rendered cursor to the command mode area and enable command mode
 /// </summary>
 void Console::enableCommandMode()
 {
@@ -421,7 +422,7 @@ void Console::enableCommandMode()
 }
 
 /// <summary>
-/// Moves the cursor to the default position when edit mode is enabled -- will need work to go back to previous edit position instead of the start every time
+/// Enables edit mode. If the file is empty, add an empty row to start the file
 /// </summary>
 void Console::enableEditMode()
 {
@@ -433,7 +434,7 @@ void Console::enableEditMode()
 }
 
 /// <summary>
-/// Deletes a row when the last uint8_tacter in the row is removed
+/// Deletes a row when the last character in the row is removed
 /// </summary>
 /// <param name="rowNum"></param>
 void Console::deleteRow(const size_t rowNum)
@@ -444,14 +445,14 @@ void Console::deleteRow(const size_t rowNum)
 }
 
 /// <summary>
-/// Fixes the rendered cursor x/y, row and column offset positions
+/// Fixes the rendered cursor x/y and row/column offset positions
 /// </summary>
-/// <param name="window"></param>
+/// <param name="row">The row we are currently on</param>
 void Console::fixRenderedCursorPosition(const FileHandler::Row& row)
 {
 	//Fixing rendered X/Col position
 	mWindow->renderedCursorX = mWindow->fileCursorX;
-	mWindow->renderedCursorX += addRenderedCursorTabs(row);
+	mWindow->renderedCursorX += getRenderedCursorTabSpaces(row);
 	mWindow->colOffset = 0;
 
 	if (mWindow->renderedCursorX >= mWindow->cols)
@@ -481,7 +482,7 @@ void Console::fixRenderedCursorPosition(const FileHandler::Row& row)
 	}
 	mWindow->renderedCursorY = mWindow->fileCursorY - mWindow->rowOffset;
 
-	if (mWindow->renderedCursorY == mWindow->rows)
+	if (mWindow->renderedCursorY == mWindow->rows) //renderedCursorY might be 1 too many rows down, so just bring it back one row if it is
 	{
 		--mWindow->renderedCursorY;
 	}
@@ -501,11 +502,11 @@ void Console::replaceRenderedStringTabs(std::string& renderedLine)
 		if (i >= renderedLine.length()) return;
 		if (renderedLine[i] != static_cast<uint8_t>(KeyActions::KeyAction::Tab)) continue;
 
-		renderedLine[i] = ' ';
+		renderedLine[i] = ' '; //Replace the tab character with a space
 		uint8_t t = 7 - (i % 8);
 		while (t > 0)
 		{
-			renderedLine.insert(renderedLine.begin() + (i), ' ');
+			renderedLine.insert(renderedLine.begin() + (i), ' '); //Add spaces until we reach a multiple of 8
 			--t;
 			++i;
 		}
@@ -517,12 +518,11 @@ void Console::replaceRenderedStringTabs(std::string& renderedLine)
 }
 
 /// <summary>
-/// Adjust the rendered cursor position to account for spaces in the rendered string
+/// Gets the amount of spaces the rendered cursor needs to be adjusted to account for tabs
 /// </summary>
 /// <param name="row">Row to check</param>
-/// <param name="window"></param>
-/// <returns>The new rendered cursor X position</returns>
-size_t Console::addRenderedCursorTabs(const FileHandler::Row& row)
+/// <returns>The amount of spaces to add</returns>
+size_t Console::getRenderedCursorTabSpaces(const FileHandler::Row& row)
 {
 	if (mWindow->fileCursorX == 0)
 	{
@@ -538,7 +538,7 @@ size_t Console::addRenderedCursorTabs(const FileHandler::Row& row)
 
 		if (row.line[i] != static_cast<uint8_t>(KeyActions::KeyAction::Tab)) continue;
 
-		spacesToAdd += 7 - ((i + spacesToAdd) % 8);
+		spacesToAdd += 7 - ((i + spacesToAdd) % 8); //Tabs are replaced with up to 8 spaces, depending on how close to a multiple of 8 the tab is
 	}
 	return spacesToAdd;
 }
@@ -552,12 +552,12 @@ size_t Console::addRenderedCursorTabs(const FileHandler::Row& row)
 void Console::updateRenderedColor(std::string& renderString, const size_t row, const size_t colOffset)
 {
 	std::string normalColorMode = "\x1b[39m";
-	size_t charactersToAdjust = 0;
+	size_t charactersToAdjust = 0; //The amount of characters to adjust for in the string position based on how many color code escape sequences have been added
 	for (const auto& highlight : mHighlight)
 	{
 		if (highlight.row < row) continue; //Cycle until on the correct row
-		if (highlight.row > row) return; //To far, dont need to check any more
-		if (colOffset >= highlight.col + highlight.length || highlight.col >= mWindow->cols + colOffset) continue; //If the highlighted section is off-screen
+		if (highlight.row > row) return; //Too far, dont need to check any more
+		if (colOffset >= highlight.col + highlight.length || highlight.col >= mWindow->cols + colOffset) continue; //If the highlighted section is off-screen we don't need to display it
 
 		const uint8_t color = SyntaxHighlight::color(highlight.colorType);
 		std::string colorFormat = std::format("\x1b[38;5;{}m", std::to_string(color));
@@ -602,10 +602,10 @@ void Console::findEndMarker(std::string& currentWord, size_t& row, size_t& posOf
 	posOffset += findPos;
 	currentWord = currentWord.substr(findPos);
 	size_t endPos;
-	uint8_t offset = strToFind.length();
+	uint8_t offset = strToFind.length(); //Offsets by the opening marker length while on the same row as the opening marker. 
 	while ((endPos = currentWord.find(strToFind, offset)) == std::string::npos)
 	{
-		offset = 0;
+		offset = 0; //If on a new row, no need to offset the check position
 		mHighlight.emplace_back(hlType, row, posOffset, currentWord.length());
 		findPos = 0;
 		posOffset = 0;
@@ -626,20 +626,21 @@ void Console::findEndMarker(std::string& currentWord, size_t& row, size_t& posOf
 /// Sets the highlight points of the rendered string if a syntax is given
 /// </summary>
 /// <param name="startingRowNum"></param>
-void Console::setHighlight(const size_t startingRowNum)
+void Console::setHighlight()
 {
 	if (mWindow->syntax == nullptr) return; //Can't highlight if there is no syntax
 
 	const std::string separators = " \"',.()+-/*=~%;:[]{}<>";
-	mHighlight.clear();
-	for (size_t i = startingRowNum; i < mWindow->fileRows.size(); ++i)
+	mHighlight.clear(); //Could be optimized to only clear the current row, but I haven't seen a lack of performance, so this is fine for now
+
+	for (size_t i = 0; i < mWindow->fileRows.size(); ++i)
 	{
 		if (i > mWindow->rowOffset + mWindow->rows) return;
 
 		FileHandler::Row* row = &mWindow->fileRows.at(i); //The starting row
 
 		std::string currentWord = row->renderedLine;
-		size_t findPos, posOffset = 0;
+		size_t findPos, posOffset = 0; //posOffset keeps track of how far into the string we are, since findPos depends on currentWord, which progressively gets smaller
 		const uint8_t singlelineCommentLength = mWindow->syntax->singlelineComment.length();
 		const uint8_t multilineCommentLength = mWindow->syntax->multilineCommentStart.length();
 
@@ -681,7 +682,7 @@ void Console::setHighlight(const size_t startingRowNum)
 				}
 			}
 
-		commentcheck:
+		commentcheck: //Skip the remaining for-loop checks
 			if (currentWord[findPos] == '"' || currentWord[findPos] == '\'') //String highlights are open until the next string marker of the same type is found
 			{
 				findEndMarker(currentWord, i, posOffset, findPos, std::string() + currentWord[findPos], SyntaxHighlight::HighlightType::String);
@@ -738,7 +739,7 @@ void Console::setHighlight(const size_t startingRowNum)
 					}
 				}
 			}
-		nextrow:
+		nextrow: //Nothing left to do on this row
 			continue;
 		}
 	}
@@ -759,7 +760,7 @@ static termios defaultMode;
 void Console::initConsole(const std::string_view& fName)
 {
 	FileHandler::fileName(fName);
-	SyntaxHighlight::initSyntax(fName); //Doesn't do anything yet
+	SyntaxHighlight::initSyntax(fName);
 
 	mWindow = std::make_unique<Window>(Window());
 	setWindowSize();
@@ -808,10 +809,10 @@ bool Console::setWindowSize()
 #elif defined(__linux__) || defined(__APPLE__)
 	winsize ws;
 	int rows, cols;
-	if (ioctl(1, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0)
+	if (ioctl(1, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) //If getting the window size from ioctl fails
 	{
-		std::cout.write("\x1b[999C\x1b[999B", 12);
-		std::cout.write("\x1b[6n", 4);
+		std::cout.write("\x1b[999C\x1b[999B", 12); //Move to the bottom-right corner of the screen
+		std::cout.write("\x1b[6n", 4); //Report cursor position - Gets reported as ESC[rows;colsR
 
 		std::string buf; buf.resize(32);
 		uint8_t i = 0;
@@ -827,7 +828,7 @@ bool Console::setWindowSize()
 			std::cerr << "Error getting window size";
 			exit(EXIT_FAILURE);
 		}
-		if (sscanf(buf.data() + 2, "%d;%d", &rows, &cols) != 2)
+		if (sscanf(buf.data() + 2, "%d;%d", &rows, &cols) != 2) //If the rows/cols data wasn't reported
 		{
 			std::cerr << "Error getting window size";
 			exit(EXIT_FAILURE);
@@ -843,7 +844,7 @@ bool Console::setWindowSize()
 	constexpr uint8_t statusMessageRows = 2;
 	mWindow->rows -= statusMessageRows;
 
-	if (prevRows != mWindow->rows || prevCols != mWindow->cols) return true;
+	if (prevRows != mWindow->rows || prevCols != mWindow->cols) return true; //Checks if the window size has changed
 
 	return false;
 }
@@ -859,7 +860,12 @@ bool Console::enableRawInput()
 	DWORD rawMode = ENABLE_EXTENDED_FLAGS | (defaultMode & ~ENABLE_LINE_INPUT & ~ENABLE_PROCESSED_INPUT
 		& ~ENABLE_ECHO_INPUT & ~ENABLE_PROCESSED_OUTPUT & ~ENABLE_WRAP_AT_EOL_OUTPUT); //Disabling certain input/output modes to enable raw mode
 
-	return SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), rawMode);
+	if (SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), rawMode))
+	{
+		atexit(disableRawInput); //Make sure raw input mode gets disabled if the program exits due to an error
+		return true;
+	}
+	return false;
 #elif defined(__linux__) || defined(__APPLE__)
 	termios raw;
 	raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
@@ -873,11 +879,8 @@ bool Console::enableRawInput()
 	{
 		return false;
 	}
-	else
-	{
-		atexit(disableRawInput);
-		return true;
-	}
+	atexit(disableRawInput); //Make sure raw input mode gets disabled if the program exits due to an error
+	return true;
 #endif
 }
 
@@ -896,12 +899,13 @@ void Console::disableRawInput()
 
 /// <summary>
 /// Clears the screen after a command is used
+/// Return value of the system call should be ignored since it should never fail
 /// </summary>
 void Console::clearScreen()
 {
 #ifdef _WIN32
-	system("cls");
+	int _ = system("cls");
 #elif defined(__linux__) || defined(__APPLE__)
-	system("clear");
+	int _ = system("clear");
 #endif
 }

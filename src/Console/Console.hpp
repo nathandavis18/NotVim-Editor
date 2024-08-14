@@ -89,10 +89,10 @@ private:
 	static void deleteRow(const size_t rowNum);
 	static void fixRenderedCursorPosition(const FileHandler::Row&);
 	static void replaceRenderedStringTabs(std::string&);
-	static size_t addRenderedCursorTabs(const FileHandler::Row&);
+	static size_t getRenderedCursorTabSpaces(const FileHandler::Row&);
 	static void updateRenderedColor(std::string&, const size_t row, const size_t colOffset);
 	static void findEndMarker(std::string& currentWord, size_t& row, size_t& posOffset, size_t& findPos, const std::string& strToFind, const SyntaxHighlight::HighlightType);
-	static void setHighlight(const size_t rowNum);
+	static void setHighlight();
 
 private:
 	inline static std::unique_ptr<Window> mWindow;

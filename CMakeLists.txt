@@ -19,5 +19,4 @@ set (HEADERS
 
 add_executable (nve ${SOURCES} ${HEADERS})
 
- set_property(TARGET nve PROPERTY CXX_STANDARD 20)
-
+set_property(TARGET nve PROPERTY CXX_STANDARD 20)

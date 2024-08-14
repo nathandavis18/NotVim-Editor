@@ -29,7 +29,7 @@ SOFTWARE.
 
 namespace InputHandler
 {
-	uint16_t getInput();
-	void handleInput(const uint16_t);
-	void doCommand(const uint16_t);
+	const KeyActions::KeyAction getInput();
+	void handleInput(KeyActions::KeyAction);
+	void doCommand(const uint8_t);
 }

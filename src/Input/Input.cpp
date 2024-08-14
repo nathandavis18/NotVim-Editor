@@ -40,7 +40,7 @@ namespace InputHandler
 	/// Filters through some sequences to determine which key was pressed
 	/// </summary>
 	/// <returns></returns>
-	uint16_t getInput()
+	const KeyAction getInput()
 	{
 		uint8_t input = _getch();
 #ifdef _WIN32
@@ -49,7 +49,7 @@ namespace InputHandler
 		if (input == functionKeyCode)
 		{
 			uint8_t _ = _getch(); //Ignore the function key specifier value
-			return 0; //Don't do anything if a function key (F1, F2, etc.) is pressed
+			return KeyAction::None; //Don't do anything if a function key (F1, F2, etc.) is pressed
 		}
 		else if (input == specialKeyCode) //This is the code to determine arrow key presses, delete, end, home, pageup/down
 		{
@@ -57,37 +57,37 @@ namespace InputHandler
 			switch (input)
 			{
 				//When not holding control
-			case 'K': return static_cast<uint16_t>(KeyAction::ArrowLeft);
-			case 'M': return static_cast<uint16_t>(KeyAction::ArrowRight);
-			case 'P': return static_cast<uint16_t>(KeyAction::ArrowDown);
-			case 'H': return static_cast<uint16_t>(KeyAction::ArrowUp);
-			case 'S': return static_cast<uint16_t>(KeyAction::Delete);
-			case 'O': return static_cast<uint16_t>(KeyAction::End);
-			case 'G': return static_cast<uint16_t>(KeyAction::Home);
-			case 'Q': return static_cast<uint16_t>(KeyAction::PageDown);
-			case 'I': return static_cast<uint16_t>(KeyAction::PageUp);
+			case 'K': return KeyAction::ArrowLeft;
+			case 'M': return KeyAction::ArrowRight;
+			case 'P': return KeyAction::ArrowDown;
+			case 'H': return KeyAction::ArrowUp;
+			case 'S': return KeyAction::Delete;
+			case 'O': return KeyAction::End;
+			case 'G': return KeyAction::Home;
+			case 'Q': return KeyAction::PageDown;
+			case 'I': return KeyAction::PageUp;
 
 				//When holding control
-			case 's': return static_cast<uint16_t>(KeyAction::CtrlArrowLeft);
-			case 't': return static_cast<uint16_t>(KeyAction::CtrlArrowRight);
-			case 145: return static_cast<uint16_t>(KeyAction::CtrlArrowDown); //Non-letter ASCII Code
-			case 141: return static_cast<uint16_t>(KeyAction::CtrlArrowUp); //Unused ASCII Code
-			case '"': return static_cast<uint16_t>(KeyAction::CtrlDelete);
-			case 'u': return static_cast<uint16_t>(KeyAction::CtrlEnd);
-			case 'w': return static_cast<uint16_t>(KeyAction::CtrlHome);
-			case 'v': return static_cast<uint16_t>(KeyAction::CtrlPageDown);
-			case 134: return static_cast<uint16_t>(KeyAction::CtrlPageUp); //Non-letter ASCII Code
+			case 's': return KeyAction::CtrlArrowLeft;
+			case 't': return KeyAction::CtrlArrowRight;
+			case 145: return KeyAction::CtrlArrowDown; //Non-letter ASCII Code
+			case 141: return KeyAction::CtrlArrowUp; //Unused ASCII Code
+			case '"': return KeyAction::CtrlDelete;
+			case 'u': return KeyAction::CtrlEnd;
+			case 'w': return KeyAction::CtrlHome;
+			case 'v': return KeyAction::CtrlPageDown;
+			case 134: return KeyAction::CtrlPageUp; //Non-letter ASCII Code
 			}
 		}
 #endif
-		return input;
+		return static_cast<KeyAction>(input);
 	}
 	/// <summary>
 	/// Handles commands while in command/read mode
 	/// i = Enter edit mode (like VIM)
 	/// : = Enter command mode (like VIM)
 	/// </summary>
-	void doCommand(const uint16_t input)
+	void doCommand(const uint8_t input)
 	{
 		std::string command;
 		switch (input)
@@ -141,9 +141,8 @@ namespace InputHandler
 	/// Windows uses the _getch() function from <conio.h>.
 	/// Linux uses a custom _getch() function
 	/// </summary>
-	void handleInput(const uint16_t input)
+	void handleInput(KeyAction key)
 	{
-		KeyAction key = static_cast<KeyAction>(input); //If there is an associated KeyAction
 		switch (key)
 		{
 		case KeyAction::Esc:
@@ -167,7 +166,7 @@ namespace InputHandler
 			Console::addRow();
 			break;
 		default:
-			Console::insertChar(input);
+			Console::insertChar(static_cast<uint8_t>(key));
 			break;
 		}
 	}
