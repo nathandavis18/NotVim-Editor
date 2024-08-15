@@ -1,15 +1,17 @@
-name: C/C++ CI
-
+name: Build
 on:
   push:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
-
 jobs:
-  build:
+  build-project:
+    name: Build Project
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout Project
+      uses: actions/checkout@v4.1.7
+      
     - name: Setup Ninja
       uses: seanmiddleditch/gha-setup-ninja@v5
 
