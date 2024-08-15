@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include <iostream>
 #include <fstream>
-#include <format>
+#include <format> //C++20 is required. MSVC/GCC-13/Clang-14/17/AppleClang-15
 
 #ifdef _WIN32
 #include <Windows.h>
