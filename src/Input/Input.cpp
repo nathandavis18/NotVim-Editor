@@ -29,7 +29,7 @@ SOFTWARE.
 #ifdef _WIN32
 #include <conio.h>
 #elif defined(__linux__) || defined(__APPLE__)
-uint16_t _getch();
+KeyAction _getch();
 #endif
 
 using KeyActions::KeyAction;
@@ -42,7 +42,14 @@ namespace InputHandler
 	/// <returns></returns>
 	const KeyAction getInput()
 	{
-		uint8_t input = _getch();
+#ifdef _WIN32
+		uint8_t input;
+#elif defined(__linux__) || defined(__APPLE__)
+		KeyAction input;
+#endif
+
+		input = _getch();
+
 #ifdef _WIN32
 		static constexpr uint8_t specialKeyCode = 224;
 		static constexpr bool functionKeyCode = 0;
@@ -80,6 +87,7 @@ namespace InputHandler
 			}
 		}
 #endif
+
 		return static_cast<KeyAction>(input);
 	}
 	/// <summary>
@@ -177,7 +185,7 @@ namespace InputHandler
 /// A custom implementation of the _getch function
 /// </summary>
 /// <returns></returns>
-uint16_t _getch()
+KeyAction _getch()
 {
 	uint8_t nread;
 	uint8_t c;
@@ -191,8 +199,8 @@ uint16_t _getch()
 		{
 		case static_cast<uint16_t>(KeyAction::Esc): //Escape sequences for certain characters
 			char seq[3];
-			if (read(STDIN_FILENO, seq, 1) == 0) return static_cast<uint16_t>(KeyAction::Esc);
-			if (read(STDIN_FILENO, seq + 1, 1) == 0) return static_cast<uint16_t>(KeyAction::Esc);
+			if (read(STDIN_FILENO, seq, 1) == 0) return KeyAction::Esc;
+			if (read(STDIN_FILENO, seq + 1, 1) == 0) return KeyAction::Esc;
 
 			if (seq[0] == '[')
 			{
@@ -202,9 +210,9 @@ uint16_t _getch()
 					{
 						switch (seq[1])
 						{
-						case '3': return static_cast<uint16_t>(KeyAction::Delete);
-						case '5': return static_cast<uint16_t>(KeyAction::PageUp);
-						case '6': return static_cast<uint16_t>(KeyAction::PageDown);
+						case '3': return KeyAction::Delete;
+						case '5': return KeyAction::PageUp;
+						case '6': return KeyAction::PageDown;
 						}
 					}
 					else if (seq[2] == ';')
@@ -212,22 +220,22 @@ uint16_t _getch()
 						switch (seq[1])
 						{
 						case '1':
-							if (read(STDIN_FILENO, seq, 1) == 0) return static_cast<uint16_t>(KeyAction::Esc);
-							if (read(STDIN_FILENO, seq + 1, 1) == 0) return static_cast<uint16_t>(KeyAction::Esc);
+							if (read(STDIN_FILENO, seq, 1) == 0) return KeyAction::Esc;
+							if (read(STDIN_FILENO, seq + 1, 1) == 0) return KeyAction::Esc;
 							if (seq[0] == '5')
 							{
 								switch (seq[1])
 								{
-								case 'A': return static_cast<uint16_t>(KeyAction::CtrlArrowUp);
-								case 'B': return static_cast<uint16_t>(KeyAction::CtrlArrowDown);
-								case 'C': return static_cast<uint16_t>(KeyAction::CtrlArrowRight);
-								case 'D': return static_cast<uint16_t>(KeyAction::CtrlArrowLeft);
+								case 'A': return KeyAction::CtrlArrowUp;
+								case 'B': return KeyAction::CtrlArrowDown;
+								case 'C': return KeyAction::CtrlArrowRight;
+								case 'D': return KeyAction::CtrlArrowLeft;
 								}
 							}
 
-						case '3': return static_cast<uint16_t>(KeyAction::CtrlDelete);
-						case '5': return static_cast<uint16_t>(KeyAction::CtrlPageUp);
-						case '6': return static_cast<uint16_t>(KeyAction::CtrlPageDown);
+						case '3': return KeyAction::CtrlDelete;
+						case '5': return KeyAction::CtrlPageUp;
+						case '6': return KeyAction::CtrlPageDown;
 						}
 					}
 				}
@@ -235,12 +243,12 @@ uint16_t _getch()
 				{
 					switch (seq[1])
 					{
-					case 'A': return static_cast<uint16_t>(KeyAction::ArrowUp);
-					case 'B': return static_cast<uint16_t>(KeyAction::ArrowDown);
-					case 'C': return static_cast<uint16_t>(KeyAction::ArrowRight);
-					case 'D': return static_cast<uint16_t>(KeyAction::ArrowLeft);
-					case 'H': return static_cast<uint16_t>(KeyAction::Home);
-					case 'F': return static_cast<uint16_t>(KeyAction::End);
+					case 'A': return KeyAction::ArrowUp;
+					case 'B': return KeyAction::ArrowDown;
+					case 'C': return KeyAction::ArrowRight;
+					case 'D': return KeyAction::ArrowLeft;
+					case 'H': return KeyAction::Home;
+					case 'F': return KeyAction::End;
 					}
 				}
 			}
@@ -248,13 +256,13 @@ uint16_t _getch()
 			{
 				switch (seq[1])
 				{
-				case 'H': return static_cast<uint16_t>(KeyAction::Home);
-				case 'F': return static_cast<uint16_t>(KeyAction::End);
+				case 'H': return KeyAction::Home;
+				case 'F': return KeyAction::End;
 				}
 			}
 			break;
 		default:
-			return c;
+			return static_cast<KeyAction>(c);
 		}
 	}
 }
