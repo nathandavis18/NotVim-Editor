@@ -16,6 +16,8 @@ jobs:
     - name: Build Project
       uses: threeal/cmake-action@v2.0.0
       with:
+        source-dir: source
+        build-dir: out/build
         generator: Ninja
         cxx-compiler: g++
         cxx-flags: -std=c++20
