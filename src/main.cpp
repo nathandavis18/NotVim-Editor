@@ -65,13 +65,21 @@ int main(int argc, const char** argv)
 		{
 			Console::refreshScreen();
 			const KeyActions::KeyAction inputCode = InputHandler::getInput();
-			if(inputCode != KeyActions::KeyAction::None) InputHandler::doCommand(static_cast<uint8_t>(inputCode));
+			if (inputCode != KeyActions::KeyAction::None)
+			{
+				InputHandler::doCommand(static_cast<uint8_t>(inputCode));
+				Console::prepRenderedString();
+			}
 		}
 		while (Console::mode() == Mode::EditMode)
 		{
 			Console::refreshScreen();
 			const KeyActions::KeyAction inputCode = InputHandler::getInput();
-			if (inputCode != KeyActions::KeyAction::None) InputHandler::handleInput(inputCode);
+			if (inputCode != KeyActions::KeyAction::None)
+			{
+				InputHandler::handleInput(inputCode);
+				Console::prepRenderedString();
+			}
 		}
 		if (Console::mode() == Mode::ExitMode)
 		{

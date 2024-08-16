@@ -45,6 +45,7 @@ class Console
 {
 public:
 	static Mode& mode(Mode = Mode::None);
+	static void prepRenderedString();
 	static void refreshScreen();
 	static void moveCursor(const KeyActions::KeyAction key);
 	static void shiftRowOffset(const KeyActions::KeyAction key);
@@ -70,6 +71,7 @@ private:
 		Window();
 		size_t fileCursorX, fileCursorY;
 		size_t renderedCursorX, renderedCursorY;
+		size_t colNumberToDisplay;
 		size_t rowOffset, colOffset;
 		size_t rows, cols;
 
@@ -86,6 +88,7 @@ private:
 		size_t row, col, length;
 	};
 
+	static void setRenderedString();
 	static void deleteRow(const size_t rowNum);
 	static void fixRenderedCursorPosition(const FileHandler::Row&);
 	static void replaceRenderedStringTabs(std::string&);

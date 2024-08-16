@@ -43,7 +43,7 @@ SOFTWARE.
 /// Construct the window
 /// </summary>
 /// <param name="fileName"></param>
-Console::Window::Window() : fileCursorX(0), fileCursorY(0), cols(0), rows(0), renderedCursorX(0), renderedCursorY(0),
+Console::Window::Window() : fileCursorX(0), fileCursorY(0), cols(0), rows(0), renderedCursorX(0), renderedCursorY(0), colNumberToDisplay(0),
 rowOffset(0), colOffset(0), dirty(false), rawModeEnabled(false), fileRows(FileHandler::loadFileContents()), syntax(SyntaxHighlight::syntax())
 {}
 
@@ -61,6 +61,31 @@ Mode& Console::mode(Mode m)
 	return mMode;
 }
 
+void Console::prepRenderedString()
+{
+	setRenderedString();
+	setHighlight();
+}
+
+/// <summary>
+/// Preps the rendered string by replacing tabs with necessary spaces
+/// </summary>
+void Console::setRenderedString()
+{
+	for (size_t r = 0; r < mWindow->rows && r < mWindow->fileRows.size(); ++r)
+	{
+		size_t fileRow = mWindow->rowOffset + r;
+		if (fileRow >= mWindow->fileRows.size()) return;
+
+		FileHandler::Row& row = mWindow->fileRows.at(fileRow);
+		row.renderedLine = row.line;
+		if (row.renderedLine.length() > 0)
+		{
+			replaceRenderedStringTabs(row.renderedLine);
+		}
+	}
+}
+
 /// <summary>
 /// Builds the output buffer and displays it to the user through std::cout
 /// Uses ANSI escape codes for clearing screen/displaying cursor and for colors
@@ -75,21 +100,6 @@ void Console::refreshScreen()
 	std::string renderBuffer = "\x1b[H"; //Move the cursor to (0, 0)
 	renderBuffer.append("\x1b[?251"); //Hide the cursor
 	renderBuffer.append("\x1b[J"); //Erase the screen to redraw changes
-
-	for (size_t r = 0; r < mWindow->rows && r < mWindow->fileRows.size(); ++r)
-	{
-		size_t fileRow = mWindow->rowOffset + r;
-		if (fileRow >= mWindow->fileRows.size()) break;
-
-		FileHandler::Row& row = mWindow->fileRows.at(fileRow);
-		row.renderedLine = row.line;
-		if (row.renderedLine.length() > 0)
-		{
-			replaceRenderedStringTabs(row.renderedLine);
-		}
-	}
-
-	setHighlight();
 
 	for (size_t y = 0; y < mWindow->rows; ++y) //For each row within the displayable range
 	{
@@ -147,7 +157,7 @@ void Console::refreshScreen()
 	status = std::format("{} - {} lines {}", FileHandler::fileName(), mWindow->fileRows.size(), mWindow->dirty ? "(modified)" : "");
 	if (mMode == Mode::EditMode)
 	{
-		rStatus = std::format("row {}/{} col {}", mWindow->rowOffset + mWindow->renderedCursorY + 1, mWindow->fileRows.size(), mWindow->colOffset + mWindow->renderedCursorX + 1);
+		rStatus = std::format("row {}/{} col {}", mWindow->rowOffset + mWindow->renderedCursorY + 1, mWindow->fileRows.size(), mWindow->colNumberToDisplay + 1);
 		modeToDisplay = "EDIT";
 	}
 	else if (mMode == Mode::CommandMode)
@@ -453,24 +463,21 @@ void Console::fixRenderedCursorPosition(const FileHandler::Row& row)
 	//Fixing rendered X/Col position
 	mWindow->renderedCursorX = mWindow->fileCursorX;
 	mWindow->renderedCursorX += getRenderedCursorTabSpaces(row);
-	mWindow->colOffset = 0;
+	mWindow->colNumberToDisplay = mWindow->renderedCursorX;
 
-	if (mWindow->renderedCursorX >= mWindow->cols)
+	while (mWindow->renderedCursorX - mWindow->colOffset >= mWindow->cols && mWindow->renderedCursorX >= mWindow->colOffset)
 	{
-		while (mWindow->renderedCursorX >= mWindow->cols)
-		{
-			--mWindow->renderedCursorX;
-			++mWindow->colOffset;
-		}
+		++mWindow->colOffset;
 	}
-	else
+	while (mWindow->renderedCursorX < mWindow->colOffset)
 	{
-		while (mWindow->fileCursorX + mWindow->colOffset > mWindow->renderedCursorX)
-		{
-			--mWindow->colOffset;
-		}
+		--mWindow->colOffset;
 	}
-
+	mWindow->renderedCursorX = mWindow->renderedCursorX - mWindow->colOffset;
+	if (mWindow->renderedCursorX == mWindow->cols)
+	{
+		--mWindow->renderedCursorX;
+	}
 	//Fixing rendered Y/Row position
 	while (mWindow->fileCursorY - mWindow->rowOffset >= mWindow->rows && mWindow->fileCursorY >= mWindow->rowOffset)
 	{
@@ -562,28 +569,19 @@ void Console::updateRenderedColor(std::string& renderString, const size_t row, c
 		const uint8_t color = SyntaxHighlight::color(highlight.colorType);
 		std::string colorFormat = std::format("\x1b[38;5;{}m", std::to_string(color));
 
-		if (colOffset >= highlight.col)
+
+		//If the beginning of keyword is at the start of the screen, or before the start of the screen, set the color at the beginning. Otherwise, set it at the location of the keyword
+		size_t insertBeginningPosition = (colOffset >= highlight.col) ? 0 : highlight.col + charactersToAdjust - colOffset;
+		renderString.insert(insertBeginningPosition, colorFormat);
+		charactersToAdjust += colorFormat.length();
+
+		size_t insertEndPosition = renderString.length();
+		if (insertEndPosition > highlight.col + charactersToAdjust + highlight.length - colOffset) //If the end of the keyword is before the end of the rendered string set it to that
 		{
-			renderString.insert(0, colorFormat); //Set the color mode
-			charactersToAdjust += colorFormat.length();
-			renderString.insert(highlight.length + highlight.col + charactersToAdjust - colOffset, normalColorMode); //Return back to normal color mode
-			charactersToAdjust += normalColorMode.length();
+			insertEndPosition = highlight.col + charactersToAdjust + highlight.length - colOffset;
 		}
-		else
-		{
-			renderString.insert(highlight.col + charactersToAdjust - colOffset, colorFormat);
-			charactersToAdjust += colorFormat.length();
-			if (highlight.length + highlight.col > mWindow->cols + colOffset)
-			{
-				renderString.insert(mWindow->cols + charactersToAdjust, normalColorMode);
-				charactersToAdjust += normalColorMode.length();
-			}
-			else
-			{
-				renderString.insert(highlight.col + charactersToAdjust + highlight.length - colOffset, normalColorMode);
-				charactersToAdjust += normalColorMode.length();
-			}
-		}
+		renderString.insert(insertEndPosition, normalColorMode);
+		charactersToAdjust += normalColorMode.length();
 	}
 }
 
@@ -785,6 +783,8 @@ void Console::initConsole(const std::string_view& fName)
 		std::cerr << "Error enabling raw input mode";
 		exit(EXIT_FAILURE);
 	}
+
+	prepRenderedString();
 }
 
 /// <summary>

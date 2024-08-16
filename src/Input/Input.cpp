@@ -138,10 +138,10 @@ namespace InputHandler
 			break;
 		default: //Unknown command. Just go back to read mode
 			Console::mode(Mode::ReadMode);
-			return;
+			break;
 		}
-		Console::enableRawInput();
 		Console::clearScreen();
+		Console::enableRawInput();
 	}
 
 	/// <summary>
