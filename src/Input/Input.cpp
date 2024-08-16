@@ -29,7 +29,7 @@ SOFTWARE.
 #ifdef _WIN32
 #include <conio.h>
 #elif defined(__linux__) || defined(__APPLE__)
-KeyAction _getch();
+KeyActions::KeyAction _getch();
 #endif
 
 using KeyActions::KeyAction;
@@ -187,83 +187,72 @@ namespace InputHandler
 /// <returns></returns>
 KeyAction _getch()
 {
-	uint8_t nread;
-	uint8_t c;
-	while ((nread = read(STDIN_FILENO, &c, 1)) == 0);
+	int8_t nread;
+	char c;
+	while (nread = read(fileno(stdin), &c, 1) == 0);
 	if (nread == -1) exit(EXIT_FAILURE);
 
-
-	while (true)
+	if (c == static_cast<char>(KeyAction::Esc))
 	{
-		switch (c)
+		char seq[3];
+		if (read(fileno(stdin), seq, 3) < 2) return KeyAction::Esc;
+		if (seq[0] == '[')
 		{
-		case static_cast<uint16_t>(KeyAction::Esc): //Escape sequences for certain characters
-			char seq[3];
-			if (read(STDIN_FILENO, seq, 1) == 0) return KeyAction::Esc;
-			if (read(STDIN_FILENO, seq + 1, 1) == 0) return KeyAction::Esc;
-
-			if (seq[0] == '[')
-			{
-				if (read(STDIN_FILENO, seq + 2, 1) != 0)
-				{
-					if (seq[2] == '~')
-					{
-						switch (seq[1])
-						{
-						case '3': return KeyAction::Delete;
-						case '5': return KeyAction::PageUp;
-						case '6': return KeyAction::PageDown;
-						}
-					}
-					else if (seq[2] == ';')
-					{
-						switch (seq[1])
-						{
-						case '1':
-							if (read(STDIN_FILENO, seq, 1) == 0) return KeyAction::Esc;
-							if (read(STDIN_FILENO, seq + 1, 1) == 0) return KeyAction::Esc;
-							if (seq[0] == '5')
-							{
-								switch (seq[1])
-								{
-								case 'A': return KeyAction::CtrlArrowUp;
-								case 'B': return KeyAction::CtrlArrowDown;
-								case 'C': return KeyAction::CtrlArrowRight;
-								case 'D': return KeyAction::CtrlArrowLeft;
-								}
-							}
-
-						case '3': return KeyAction::CtrlDelete;
-						case '5': return KeyAction::CtrlPageUp;
-						case '6': return KeyAction::CtrlPageDown;
-						}
-					}
-				}
-				else
-				{
-					switch (seq[1])
-					{
-					case 'A': return KeyAction::ArrowUp;
-					case 'B': return KeyAction::ArrowDown;
-					case 'C': return KeyAction::ArrowRight;
-					case 'D': return KeyAction::ArrowLeft;
-					case 'H': return KeyAction::Home;
-					case 'F': return KeyAction::End;
-					}
-				}
-			}
-			else if (seq[0] == 'O')
+			if (seq[2] == static_cast<char>(KeyAction::None)) //If 3 characters weren't read in
 			{
 				switch (seq[1])
 				{
+				case 'A': return KeyAction::ArrowUp;
+				case 'B': return KeyAction::ArrowDown;
+				case 'C': return KeyAction::ArrowRight;
+				case 'D': return KeyAction::ArrowLeft;
 				case 'H': return KeyAction::Home;
 				case 'F': return KeyAction::End;
 				}
 			}
-			break;
-		default:
-			return static_cast<KeyAction>(c);
+			else
+			{
+				if (seq[2] == '~')
+				{
+					switch (seq[1])
+					{
+					case '3': return KeyAction::Delete;
+					case '5': return KeyAction::PageUp;
+					case '6': return KeyAction::PageDown;
+					}
+				}
+				else if (seq[2] == ';')
+				{
+					switch (seq[1])
+					{
+					case '1':
+						if (read(fileno(stdin), seq, 2) < 2) return KeyAction::Esc;
+						if (seq[0] == '5')
+						{
+							switch (seq[1])
+							{
+							case 'A': return KeyAction::CtrlArrowUp;
+							case 'B': return KeyAction::CtrlArrowDown;
+							case 'C': return KeyAction::CtrlArrowRight;
+							case 'D': return KeyAction::CtrlArrowLeft;
+							}
+						}
+					case '3': return KeyAction::CtrlDelete;
+					case '5': return KeyAction::CtrlPageUp;
+					case '6': return KeyAction::CtrlPageDown;
+					}
+				}
+			}
+		}
+		else if (seq[0] == 'O')
+		{
+			switch (seq[1])
+			{
+			case 'H': return KeyAction::Home;
+			case 'F': return KeyAction::End;
+			}
 		}
 	}
+	return static_cast<KeyAction>(c);
 }
 #endif
