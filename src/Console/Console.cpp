@@ -248,6 +248,7 @@ void Console::moveCursor(const KeyActions::KeyAction key)
 			++mWindow->fileCursorX;
 		}
 		break;
+
 	case KeyActions::KeyAction::ArrowUp:
 		if (mWindow->fileCursorY == 0)
 		{
@@ -262,6 +263,7 @@ void Console::moveCursor(const KeyActions::KeyAction key)
 			mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
 		}
 		break;
+
 	case KeyActions::KeyAction::ArrowDown:
 		if (mWindow->fileCursorY == mWindow->fileRows.size() - 1)
 		{
@@ -273,6 +275,61 @@ void Console::moveCursor(const KeyActions::KeyAction key)
 		if (mWindow->fileCursorX > mWindow->fileRows.at(mWindow->fileCursorY).line.length())
 		{
 			mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
+		}
+		break;
+
+	case KeyActions::KeyAction::CtrlArrowLeft:
+		if (mWindow->fileCursorX == 0 && mWindow->fileCursorY == 0) return; //Can't move any farther left if we are at the beginning of the file
+
+		if (mWindow->fileCursorX == 0)
+		{
+			--mWindow->fileCursorY;
+			mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
+		}
+		else
+		{
+			size_t findPos;
+			if ((findPos = mWindow->fileRows.at(mWindow->fileCursorY).line.substr(0, mWindow->fileCursorX).find_last_of(separators)) == std::string::npos)
+			{
+				mWindow->fileCursorX = 0;
+			}
+			else if (findPos == mWindow->fileCursorX - 1)
+			{
+				--mWindow->fileCursorX;
+			}
+			else
+			{
+				mWindow->fileCursorX = findPos;
+			}
+
+		}
+		break;
+	case KeyActions::KeyAction::CtrlArrowRight:
+		if (mWindow->fileCursorY == mWindow->fileRows.size() - 1)
+		{
+			if (mWindow->fileCursorX == mWindow->fileRows.at(mWindow->fileCursorY).line.length()) return; //Can't move any farther right if we are at the end of the file
+		}
+
+		if (mWindow->fileCursorX == mWindow->fileRows.at(mWindow->fileCursorY).line.length())
+		{
+			mWindow->fileCursorX = 0;
+			++mWindow->fileCursorY;
+		}
+		else
+		{
+			size_t findPos;
+			if ((findPos = mWindow->fileRows.at(mWindow->fileCursorY).line.substr(mWindow->fileCursorX).find_first_of(separators)) == std::string::npos)
+			{
+				mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
+			}
+			else if (findPos == 0)
+			{
+				++mWindow->fileCursorX;
+			}
+			else
+			{
+				mWindow->fileCursorX += findPos + 1;
+			}
 		}
 		break;
 	}
@@ -342,8 +399,9 @@ void Console::addRow()
 void Console::deleteChar(const KeyActions::KeyAction key)
 {
 	FileHandler::Row& row = mWindow->fileRows.at(mWindow->fileCursorY);
-	if (key == KeyActions::KeyAction::Backspace)
+	switch (key)
 	{
+	case KeyActions::KeyAction::Backspace:
 		if (mWindow->fileCursorX == 0 && mWindow->fileCursorY == 0) return;
 
 		if (mWindow->fileCursorX == 0)
@@ -358,9 +416,9 @@ void Console::deleteChar(const KeyActions::KeyAction key)
 			row.line.erase(row.line.begin() + mWindow->fileCursorX - 1);
 			--mWindow->fileCursorX;
 		}
-	}
-	else if (key == KeyActions::KeyAction::Delete)
-	{
+		break;
+
+	case KeyActions::KeyAction::Delete:
 		if (mWindow->fileCursorY == mWindow->fileRows.size() - 1 && mWindow->fileCursorX == row.line.length()) return;
 
 		if (mWindow->fileCursorX == row.line.length())
@@ -372,6 +430,63 @@ void Console::deleteChar(const KeyActions::KeyAction key)
 		{
 			row.line.erase(row.line.begin() + mWindow->fileCursorX);
 		}
+		break;
+
+	case KeyActions::KeyAction::CtrlBackspace:
+		if (mWindow->fileCursorX == 0 && mWindow->fileCursorY == 0) return;
+
+		if (mWindow->fileCursorX == 0)
+		{
+			mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY - 1).line.length();
+			mWindow->fileRows.at(mWindow->fileCursorY - 1).line.append(row.line);
+			deleteRow(mWindow->fileCursorY);
+			--mWindow->fileCursorY; 
+		}
+		else
+		{
+			size_t findPos;
+			if ((findPos = row.line.substr(0, mWindow->fileCursorX).find_last_of(separators)) == std::string::npos) //Delete everything in the row to the beginning
+			{
+				row.line.erase(row.line.begin(), row.line.begin() + mWindow->fileCursorX);
+				mWindow->fileCursorX = 0;
+			}
+			else if (findPos == mWindow->fileCursorX - 1)
+			{
+				deleteChar(KeyActions::KeyAction::Backspace); //Delete just the separator
+			}
+			else
+			{
+				row.line.erase(row.line.begin() + findPos + 1, row.line.begin() + mWindow->fileCursorX);
+				mWindow->fileCursorX = findPos + 1;
+			}
+		}
+		break;
+
+	case KeyActions::KeyAction::CtrlDelete:
+		if (mWindow->fileCursorY == mWindow->fileRows.size() - 1 && mWindow->fileCursorX == row.line.length()) return;
+
+		if (mWindow->fileCursorX == row.line.length())
+		{
+			row.line.append(mWindow->fileRows.at(mWindow->fileCursorY + 1).line);
+			deleteRow(mWindow->fileCursorY + 1);
+		}
+		else
+		{
+			size_t findPos;
+			if ((findPos = row.line.substr(mWindow->fileCursorX).find_first_of(separators)) == std::string::npos) //Delete everything in the row to the beginning
+			{
+				row.line.erase(row.line.begin() + mWindow->fileCursorX, row.line.end());
+			}
+			else if (findPos == 0)
+			{
+				deleteChar(KeyActions::KeyAction::Delete); //Delete just the separator
+			}
+			else
+			{
+				row.line.erase(row.line.begin() + mWindow->fileCursorX, row.line.begin() + findPos + mWindow->fileCursorX);
+			}
+		}
+		break;
 	}
 	mWindow->dirty = true;
 }
@@ -628,7 +743,6 @@ void Console::setHighlight()
 {
 	if (mWindow->syntax == nullptr) return; //Can't highlight if there is no syntax
 
-	const std::string separators = " \"',.()+-/*=~%;:[]{}<>";
 	mHighlight.clear(); //Could be optimized to only clear the current row, but I haven't seen a lack of performance, so this is fine for now
 
 	for (size_t i = 0; i < mWindow->fileRows.size(); ++i)

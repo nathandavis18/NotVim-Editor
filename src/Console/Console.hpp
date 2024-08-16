@@ -101,4 +101,5 @@ private:
 	inline static std::unique_ptr<Window> mWindow;
 	inline static std::vector<HighlightLocations> mHighlight;
 	inline static Mode mMode = Mode::ReadMode;
+	inline static const std::string separators = " \"',.()+-/*=~%;:[]{}<>";
 };

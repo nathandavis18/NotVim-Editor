@@ -79,7 +79,7 @@ namespace InputHandler
 			case 't': return KeyAction::CtrlArrowRight;
 			case 145: return KeyAction::CtrlArrowDown; //Non-letter ASCII Code
 			case 141: return KeyAction::CtrlArrowUp; //Unused ASCII Code
-			case '"': return KeyAction::CtrlDelete;
+			case 147: return KeyAction::CtrlDelete; //Left Double Quote - Non-standard ASCII Character
 			case 'u': return KeyAction::CtrlEnd;
 			case 'w': return KeyAction::CtrlHome;
 			case 'v': return KeyAction::CtrlPageDown;
@@ -158,12 +158,16 @@ namespace InputHandler
 			break;
 		case KeyAction::Delete:
 		case KeyAction::Backspace:
+		case KeyAction::CtrlBackspace:
+		case KeyAction::CtrlDelete:
 			Console::deleteChar(key);
 			break;
 		case KeyAction::ArrowDown:
 		case KeyAction::ArrowUp:
 		case KeyAction::ArrowLeft:
 		case KeyAction::ArrowRight:
+		case KeyAction::CtrlArrowLeft:
+		case KeyAction::CtrlArrowRight:
 			Console::moveCursor(key);
 			break;
 		case KeyAction::CtrlArrowDown:
