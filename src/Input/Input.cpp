@@ -252,8 +252,12 @@ KeyAction _getch()
 							}
 						}
 					case '3': return KeyAction::CtrlDelete;
-					case '5': return KeyAction::CtrlPageUp;
-					case '6': return KeyAction::CtrlPageDown;
+					case '5':
+						if (read(fileno(stdin), seq, 2) < 2) return KeyAction::Esc;
+						return KeyAction::CtrlPageUp;
+					case '6':
+						if (read(fileno(stdin), seq, 2) < 2) return KeyAction::Esc;
+						return KeyAction::CtrlPageDown;
 					}
 				}
 			}
