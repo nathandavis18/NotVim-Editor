@@ -235,6 +235,7 @@ void Console::moveCursor(const KeyActions::KeyAction key)
 		{
 			--mWindow->fileCursorX;
 		}
+		mWindow->updateSavedPos = true;
 		break;
 	case KeyActions::KeyAction::ArrowRight:
 		if (mWindow->fileCursorY == mWindow->fileRows.size() - 1)
@@ -251,6 +252,7 @@ void Console::moveCursor(const KeyActions::KeyAction key)
 		{
 			++mWindow->fileCursorX;
 		}
+		mWindow->updateSavedPos = true;
 		break;
 
 	case KeyActions::KeyAction::ArrowUp:
@@ -261,11 +263,7 @@ void Console::moveCursor(const KeyActions::KeyAction key)
 		}
 
 		--mWindow->fileCursorY;
-
-		if (mWindow->fileCursorX > mWindow->fileRows.at(mWindow->fileCursorY).line.length())
-		{
-			mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
-		}
+		setCursorLinePosition();
 		break;
 
 	case KeyActions::KeyAction::ArrowDown:
@@ -276,10 +274,7 @@ void Console::moveCursor(const KeyActions::KeyAction key)
 		}
 
 		++mWindow->fileCursorY;
-		if (mWindow->fileCursorX > mWindow->fileRows.at(mWindow->fileCursorY).line.length())
-		{
-			mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
-		}
+		setCursorLinePosition();
 		break;
 
 	case KeyActions::KeyAction::CtrlArrowLeft:
@@ -309,6 +304,7 @@ void Console::moveCursor(const KeyActions::KeyAction key)
 			}
 
 		}
+		mWindow->updateSavedPos = true;
 		break;
 	case KeyActions::KeyAction::CtrlArrowRight:
 		//Stuff copied from ArrowRight
@@ -340,23 +336,28 @@ void Console::moveCursor(const KeyActions::KeyAction key)
 				mWindow->fileCursorX += findPos + 1; //Go to the character just beyond the separator (the start of the next word)
 			}
 		}
+		mWindow->updateSavedPos = true;
 		break;
 
 	case KeyActions::KeyAction::Home:
 		mWindow->fileCursorX = 0;
+		mWindow->updateSavedPos = true;
 		break;
 		
 	case KeyActions::KeyAction::End:
 		mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
+		mWindow->updateSavedPos = true;
 		break;
 
 	case KeyActions::KeyAction::CtrlHome:
 		mWindow->fileCursorX = 0; mWindow->fileCursorY = 0;
+		mWindow->updateSavedPos = true;
 		break;
 
 	case KeyActions::KeyAction::CtrlEnd:
 		mWindow->fileCursorY = mWindow->fileRows.size() - 1;
 		mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
+		mWindow->updateSavedPos = true;
 		break;
 
 	case KeyActions::KeyAction::PageUp: //Shift screen offset up by 1 page worth (mWindow->rows)
@@ -477,6 +478,7 @@ void Console::addRow()
 
 	mWindow->fileCursorX = 0; ++mWindow->fileCursorY;
 	mWindow->dirty = true;
+	mWindow->updateSavedPos = true;
 }
 
 /// <summary>
@@ -576,6 +578,7 @@ void Console::deleteChar(const KeyActions::KeyAction key)
 		break;
 	}
 	mWindow->dirty = true;
+	mWindow->updateSavedPos = true;
 }
 
 /// <summary>
@@ -589,6 +592,7 @@ void Console::insertChar(const uint8_t c)
 	row.line.insert(row.line.begin() + mWindow->fileCursorX, c);
 	++mWindow->fileCursorX;
 	mWindow->dirty = true;
+	mWindow->updateSavedPos = true;
 }
 
 bool Console::isRawMode()
@@ -656,6 +660,30 @@ void Console::deleteRow(const size_t rowNum)
 	mWindow->dirty = true;
 }
 
+void Console::setCursorLinePosition()
+{
+	if (mWindow->renderedCursorX > mWindow->fileRows.at(mWindow->fileCursorY).renderedLine.length())
+	{
+		mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
+		return;
+	}
+	mWindow->fileCursorX = 0;
+	size_t spaces = getRenderedCursorTabSpaces(mWindow->fileRows.at(mWindow->fileCursorY));
+	while (mWindow->fileCursorX + spaces < mWindow->savedRenderedCursorXPos)
+	{
+		++mWindow->fileCursorX;
+		spaces = getRenderedCursorTabSpaces(mWindow->fileRows.at(mWindow->fileCursorY));
+	}
+	if (mWindow->fileCursorX + spaces > mWindow->savedRenderedCursorXPos)
+	{
+		--mWindow->fileCursorX;
+	}
+	if (mWindow->fileCursorX > mWindow->fileRows.at(mWindow->fileCursorY).line.length())
+	{
+		mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
+	}
+}
+
 /// <summary>
 /// Fixes the rendered cursor x/y and row/column offset positions
 /// </summary>
@@ -695,6 +723,12 @@ void Console::fixRenderedCursorPosition(const FileHandler::Row& row)
 	{
 		--mWindow->renderedCursorY;
 	}
+
+	if (mWindow->updateSavedPos)
+	{
+		mWindow->savedRenderedCursorXPos = mWindow->renderedCursorX;
+		mWindow->updateSavedPos = false;
+	}
 }
 
 
@@ -733,13 +767,6 @@ void Console::replaceRenderedStringTabs(std::string& renderedLine)
 /// <returns>The amount of spaces to add</returns>
 size_t Console::getRenderedCursorTabSpaces(const FileHandler::Row& row)
 {
-	if (mWindow->fileCursorX == 0)
-	{
-		mWindow->colOffset = 0;
-		mWindow->renderedCursorX = 0;
-		return 0;
-	}
-
 	size_t spacesToAdd = 0;
 	for (size_t i = 0; i < mWindow->fileCursorX; ++i)
 	{

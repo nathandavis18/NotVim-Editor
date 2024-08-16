@@ -71,6 +71,7 @@ private:
 		Window();
 		size_t fileCursorX, fileCursorY;
 		size_t renderedCursorX, renderedCursorY;
+		size_t savedRenderedCursorXPos; bool updateSavedPos = true;
 		size_t colNumberToDisplay;
 		size_t rowOffset, colOffset;
 		size_t rows, cols;
@@ -90,6 +91,7 @@ private:
 
 	static void setRenderedString();
 	static void deleteRow(const size_t rowNum);
+	static void setCursorLinePosition();
 	static void fixRenderedCursorPosition(const FileHandler::Row&);
 	static void replaceRenderedStringTabs(std::string&);
 	static size_t getRenderedCursorTabSpaces(const FileHandler::Row&);
