@@ -37,7 +37,7 @@ SOFTWARE.
 #include <sys/ioctl.h>
 #include <signal.h>
 #endif
-#define NotVimVersion "0.2.1a"
+#define NotVimVersion "0.3.0a"
 
 /// <summary>
 /// Construct the window
