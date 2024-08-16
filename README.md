@@ -34,6 +34,8 @@ Controls are listed as follows:
 	- CtrlArrow Up/Down: Shift the current view offset by one up/down
 	- Home/End: Go to start of/end of current row
 	- CtrlHome/End: Go to start of / end of file
+	- PageUp/Down: Shift screen position by 1 page/screen rows worth
+	- CtrlPage Up/Down: Move cursor to start of/end of screen without adjusting screen position
 
 	CHARACTER EDITING:
 	- Letter/Number/Symbol: Insert at current cursor position and move cursor forward

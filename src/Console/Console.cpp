@@ -358,6 +358,67 @@ void Console::moveCursor(const KeyActions::KeyAction key)
 		mWindow->fileCursorY = mWindow->fileRows.size() - 1;
 		mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
 		break;
+
+	case KeyActions::KeyAction::PageUp: //Shift screen offset up by 1 page worth (mWindow->rows)
+		if (mWindow->fileCursorY < mWindow->rows)
+		{
+			mWindow->fileCursorY = 0;
+			mWindow->rowOffset = 0;
+		}
+		else
+		{
+			mWindow->fileCursorY -= mWindow->rows;
+			if (mWindow->rowOffset >= mWindow->rows) mWindow->rowOffset -= mWindow->rows;
+			else mWindow->rowOffset = 0;
+		}
+		if (mWindow->fileCursorX > mWindow->fileRows.at(mWindow->fileCursorY).line.length())
+		{
+			mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
+		}
+		break;
+
+	case KeyActions::KeyAction::PageDown: //Shift screen offset down by 1 page worth (mWindow->rows)
+		if (mWindow->fileCursorY + mWindow->rows > mWindow->fileRows.size() - 1)
+		{
+			if (mWindow->fileCursorY == mWindow->fileRows.size() - 1) return;
+
+			mWindow->fileCursorY = mWindow->fileRows.size() - 1;
+			mWindow->rowOffset += mWindow->fileCursorY % mWindow->rows;
+		}
+		else
+		{
+			mWindow->fileCursorY += mWindow->rows;
+			mWindow->rowOffset += mWindow->rows;
+		}
+		if (mWindow->fileCursorX > mWindow->fileRows.at(mWindow->fileCursorY).line.length())
+		{
+			mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
+		}
+		break;
+
+	case KeyActions::KeyAction::CtrlPageUp: //Move cursor to top of screen
+		mWindow->fileCursorY -= (mWindow->fileCursorY - mWindow->rowOffset) % mWindow->rows;
+		if (mWindow->fileCursorX > mWindow->fileRows.at(mWindow->fileCursorY).line.length())
+		{
+			mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
+		}
+		break;
+
+	case KeyActions::KeyAction::CtrlPageDown: //Move cursor to bottom of screen
+		if (mWindow->fileCursorY + mWindow->rows - ((mWindow->fileCursorY - mWindow->rowOffset) % mWindow->rows) > mWindow->fileRows.size() - 1)
+		{
+			mWindow->fileCursorY = mWindow->fileRows.size() - 1;
+		}
+		else
+		{
+			mWindow->fileCursorY += mWindow->rows - ((mWindow->fileCursorY - mWindow->rowOffset) % mWindow->rows);
+		}
+
+		if (mWindow->fileCursorX > mWindow->fileRows.at(mWindow->fileCursorY).line.length())
+		{
+			mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
+		}
+		break;
 	}
 }
 

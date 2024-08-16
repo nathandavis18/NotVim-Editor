@@ -172,6 +172,10 @@ namespace InputHandler
 		case KeyAction::End:
 		case KeyAction::CtrlHome:
 		case KeyAction::CtrlEnd:
+		case KeyAction::PageDown:
+		case KeyAction::PageUp:
+		case KeyAction::CtrlPageDown:
+		case KeyAction::CtrlPageUp:
 			Console::moveCursor(key);
 			break;
 		case KeyAction::CtrlArrowDown:
