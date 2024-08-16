@@ -47,9 +47,8 @@ This executable is a standalone executable, so you may also add this file to you
 
 ### Known Bugs
 
- - Arrow keys cannot be held to quickly navigate through the screen on Linux.
  - Cursor does not save rendered position, but rather position within the file, so cursor may appear to jump around when moving up/down
- - Screen randomly flickers (not sure why, but I am working on finding the culprit)
+ - Screen randomly flickers (not sure why, but I am working on finding the culprit) -- May be fixed, needs more testing
 
 <hr>
 
