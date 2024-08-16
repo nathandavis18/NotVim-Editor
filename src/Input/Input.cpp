@@ -168,6 +168,10 @@ namespace InputHandler
 		case KeyAction::ArrowRight:
 		case KeyAction::CtrlArrowLeft:
 		case KeyAction::CtrlArrowRight:
+		case KeyAction::Home:
+		case KeyAction::End:
+		case KeyAction::CtrlHome:
+		case KeyAction::CtrlEnd:
 			Console::moveCursor(key);
 			break;
 		case KeyAction::CtrlArrowDown:
@@ -239,6 +243,8 @@ KeyAction _getch()
 							case 'B': return KeyAction::CtrlArrowDown;
 							case 'C': return KeyAction::CtrlArrowRight;
 							case 'D': return KeyAction::CtrlArrowLeft;
+							case 'H': return KeyAction::CtrlHome;
+							case 'F': return KeyAction::CtrlEnd;
 							}
 						}
 					case '3': return KeyAction::CtrlDelete;

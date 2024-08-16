@@ -25,21 +25,23 @@ Controls are listed as follows:
 	- wq/sq: [W]rite and [Q]uit / [S]ave and [Q]uit.
 
 	WHILE IN EDIT MODE:
-		Escape: Go back to Read Mode
+	Escape: Go back to Read Mode
 
-		MOVEMENT FUNCTIONALITY:
-		- ArrowKey Left/Right: Move 1 character left/right within the file.
-		- ArrowKey Up/Down: Move one row up/down within the file
-		- CtrlArrow Left/Right: Move to the start/end of the previous word/next word
-		- CtrlArrow Up/Down: Shift the current view offset by one up/down
+	MOVEMENT FUNCTIONALITY:
+	- ArrowKey Left/Right: Move 1 character left/right within the file.
+	- ArrowKey Up/Down: Move one row up/down within the file
+	- CtrlArrow Left/Right: Move to the start/end of the previous word/next word
+	- CtrlArrow Up/Down: Shift the current view offset by one up/down
+	- Home/End: Go to start of/end of current row
+	- CtrlHome/End: Go to start of / end of file
 
-		CHARACTER EDITING:
-		- Letter/Number/Symbol: Insert at current cursor position and move cursor forward
-		- Enter/Return: Insert a new row, moving contents beyond the cursor onto the new row and move cursor to start of new row
-		- Backspace/Delete: Delete character behind/in front of cursor. Move cursor backwards if using backspace.
-		- CtrlBackspace/Delete: Delete word
+	CHARACTER EDITING:
+	- Letter/Number/Symbol: Insert at current cursor position and move cursor forward
+	- Enter/Return: Insert a new row, moving contents beyond the cursor onto the new row and move cursor to start of new row
+	- Backspace/Delete: Delete character behind/in front of cursor. Move cursor backwards if using backspace.
+	- CtrlBackspace/Delete: Delete word
 
-More key functionality will be added as this project progresses, such as using Home Key to navigate to start of line, End for end of line, etc.
+More key functionality will be added as this project progresses.
 
 I will also try to add Undo/Redo functionality, but that will be at a much later date, as this project is still in the very early stages of development.
 

@@ -341,6 +341,23 @@ void Console::moveCursor(const KeyActions::KeyAction key)
 			}
 		}
 		break;
+
+	case KeyActions::KeyAction::Home:
+		mWindow->fileCursorX = 0;
+		break;
+		
+	case KeyActions::KeyAction::End:
+		mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
+		break;
+
+	case KeyActions::KeyAction::CtrlHome:
+		mWindow->fileCursorX = 0; mWindow->fileCursorY = 0;
+		break;
+
+	case KeyActions::KeyAction::CtrlEnd:
+		mWindow->fileCursorY = mWindow->fileRows.size() - 1;
+		mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
+		break;
 	}
 }
 
