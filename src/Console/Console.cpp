@@ -61,6 +61,9 @@ Mode& Console::mode(Mode m)
 	return mMode;
 }
 
+/// <summary>
+/// Steps to be taken before refreshScreen() is called
+/// </summary>
 void Console::prepRenderedString()
 {
 	setRenderedString();
@@ -131,6 +134,7 @@ void Console::refreshScreen()
 		}
 
 		FileHandler::Row& row = mWindow->fileRows.at(fileRow);
+
 		//Set the render string length to the lesser of the terminal width and the line length.
 		const size_t renderedLength = (row.renderedLine.length() - mWindow->colOffset) > mWindow->cols ? mWindow->cols : row.renderedLine.length();
 		if (renderedLength > 0)
@@ -279,6 +283,7 @@ void Console::moveCursor(const KeyActions::KeyAction key)
 		break;
 
 	case KeyActions::KeyAction::CtrlArrowLeft:
+		//Stuff copied from ArrowLeft
 		if (mWindow->fileCursorX == 0 && mWindow->fileCursorY == 0) return; //Can't move any farther left if we are at the beginning of the file
 
 		if (mWindow->fileCursorX == 0)
@@ -286,25 +291,27 @@ void Console::moveCursor(const KeyActions::KeyAction key)
 			--mWindow->fileCursorY;
 			mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
 		}
+		//New Stuff
 		else
 		{
-			size_t findPos;
+			size_t findPos; //If there isn't a separator character before the cursor
 			if ((findPos = mWindow->fileRows.at(mWindow->fileCursorY).line.substr(0, mWindow->fileCursorX).find_last_of(separators)) == std::string::npos)
 			{
 				mWindow->fileCursorX = 0;
 			}
-			else if (findPos == mWindow->fileCursorX - 1)
+			else if (findPos == mWindow->fileCursorX - 1) //If the separator character is just before the cursor
 			{
 				--mWindow->fileCursorX;
 			}
 			else
 			{
-				mWindow->fileCursorX = findPos;
+				mWindow->fileCursorX = findPos; //Go to the end of the previous word
 			}
 
 		}
 		break;
 	case KeyActions::KeyAction::CtrlArrowRight:
+		//Stuff copied from ArrowRight
 		if (mWindow->fileCursorY == mWindow->fileRows.size() - 1)
 		{
 			if (mWindow->fileCursorX == mWindow->fileRows.at(mWindow->fileCursorY).line.length()) return; //Can't move any farther right if we are at the end of the file
@@ -315,20 +322,22 @@ void Console::moveCursor(const KeyActions::KeyAction key)
 			mWindow->fileCursorX = 0;
 			++mWindow->fileCursorY;
 		}
+
+		//New stuff
 		else
 		{
-			size_t findPos;
+			size_t findPos; //If there isn't a separator character within the remaining string
 			if ((findPos = mWindow->fileRows.at(mWindow->fileCursorY).line.substr(mWindow->fileCursorX).find_first_of(separators)) == std::string::npos)
 			{
 				mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY).line.length();
 			}
-			else if (findPos == 0)
+			else if (findPos == 0) //If the cursor is currently on the separator character
 			{
 				++mWindow->fileCursorX;
 			}
 			else
 			{
-				mWindow->fileCursorX += findPos + 1;
+				mWindow->fileCursorX += findPos + 1; //Go to the character just beyond the separator (the start of the next word)
 			}
 		}
 		break;

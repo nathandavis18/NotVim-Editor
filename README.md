@@ -9,6 +9,42 @@ https://github.com/user-attachments/assets/bc71a3f9-f7f1-4bb0-9f69-fb3d8aef2c8a
 
 <hr>
 
+### Controls/Features
+Currently you can only move the cursor while in edit mode. This will soon be changed to allow moving cursor in read mode as well.
+
+Controls are listed as follows:
+
+	WHILE IN READ MODE (Default Mode):
+	- i - Enable Edit Mode
+	- : - Enable Command Mode
+	
+	WHILE IN COMMAND MODE:
+	- q: Quit (File must be saved if changes have been made)
+	- q!: Force Quit. Don't even check if file has been saved
+	- w/s: [W]rite/[S]ave changes
+	- wq/sq: [W]rite and [Q]uit / [S]ave and [Q]uit.
+
+	WHILE IN EDIT MODE:
+		Escape: Go back to Read Mode
+
+		MOVEMENT FUNCTIONALITY:
+		- ArrowKey Left/Right: Move 1 character left/right within the file.
+		- ArrowKey Up/Down: Move one row up/down within the file
+		- CtrlArrow Left/Right: Move to the start/end of the previous word/next word
+		- CtrlArrow Up/Down: Shift the current view offset by one up/down
+
+		CHARACTER EDITING:
+		- Letter/Number/Symbol: Insert at current cursor position and move cursor forward
+		- Enter/Return: Insert a new row, moving contents beyond the cursor onto the new row and move cursor to start of new row
+		- Backspace/Delete: Delete character behind/in front of cursor. Move cursor backwards if using backspace.
+		- CtrlBackspace/Delete: Delete word
+
+More key functionality will be added as this project progresses, such as using Home Key to navigate to start of line, End for end of line, etc.
+
+I will also try to add Undo/Redo functionality, but that will be at a much later date, as this project is still in the very early stages of development.
+
+<hr>
+
 ### Building
 
 A CMake Build script is provided. CMake 3.12, as well as a C++20 compliant compiler is required.
