@@ -11,6 +11,7 @@ https://github.com/user-attachments/assets/bc71a3f9-f7f1-4bb0-9f69-fb3d8aef2c8a
 
 ### Versions
 If you would like to try the latest features, you can build the application from the master branch. However, some features may be experimental, and bugs may arise.
+
 If you would like to use a stable release, check out the releases tab. Releases are tested to be as stable as possible. Some bugs may slip through to releases, so be sure to report those!
 
 <hr>
