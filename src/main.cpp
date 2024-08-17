@@ -67,7 +67,7 @@ int main(int argc, const char** argv)
 			const KeyActions::KeyAction inputCode = InputHandler::getInput();
 			if (inputCode != KeyActions::KeyAction::None)
 			{
-				InputHandler::doCommand(static_cast<uint8_t>(inputCode));
+				InputHandler::doCommand(inputCode);
 				Console::prepRenderedString();
 			}
 		}

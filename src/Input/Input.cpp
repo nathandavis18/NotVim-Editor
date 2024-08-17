@@ -95,16 +95,16 @@ namespace InputHandler
 	/// i = Enter edit mode (like VIM)
 	/// : = Enter command mode (like VIM)
 	/// </summary>
-	void doCommand(const uint8_t input)
+	void doCommand(const KeyAction key)
 	{
 		std::string command;
-		switch (input)
+		switch (key)
 		{
-		case 'i':
+		case static_cast<KeyAction>('i'):
 			Console::enableRawInput();
 			Console::enableEditMode();
 			break;
-		case ':':
+		case static_cast<KeyAction>(':'):
 			Console::disableRawInput();
 			Console::enableCommandMode();
 			std::cout << ":";
@@ -135,13 +135,33 @@ namespace InputHandler
 				break;
 			}
 			Console::mode(Mode::ReadMode); //Go back to read mode after executing a command
+			Console::clearScreen();
+			Console::enableRawInput();
+			break;
+		case KeyAction::ArrowDown:
+		case KeyAction::ArrowUp:
+		case KeyAction::ArrowLeft:
+		case KeyAction::ArrowRight:
+		case KeyAction::CtrlArrowLeft:
+		case KeyAction::CtrlArrowRight:
+		case KeyAction::Home:
+		case KeyAction::End:
+		case KeyAction::CtrlHome:
+		case KeyAction::CtrlEnd:
+		case KeyAction::PageDown:
+		case KeyAction::PageUp:
+		case KeyAction::CtrlPageDown:
+		case KeyAction::CtrlPageUp:
+			Console::moveCursor(key);
+			break;
+		case KeyAction::CtrlArrowDown:
+		case KeyAction::CtrlArrowUp:
+			Console::shiftRowOffset(key);
 			break;
 		default: //Unknown command. Just go back to read mode
 			Console::mode(Mode::ReadMode);
 			break;
 		}
-		Console::clearScreen();
-		Console::enableRawInput();
 	}
 
 	/// <summary>

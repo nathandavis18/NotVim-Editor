@@ -43,7 +43,7 @@ SOFTWARE.
 /// Construct the window
 /// </summary>
 /// <param name="fileName"></param>
-Console::Window::Window() : fileCursorX(0), fileCursorY(0), cols(0), rows(0), renderedCursorX(0), renderedCursorY(0), colNumberToDisplay(0),
+Console::Window::Window() : fileCursorX(0), fileCursorY(0), cols(0), rows(0), renderedCursorX(0), renderedCursorY(0), colNumberToDisplay(0), savedRenderedCursorXPos(0),
 rowOffset(0), colOffset(0), dirty(false), rawModeEnabled(false), fileRows(FileHandler::loadFileContents()), syntax(SyntaxHighlight::syntax())
 {}
 
@@ -66,6 +66,7 @@ Mode& Console::mode(Mode m)
 /// </summary>
 void Console::prepRenderedString()
 {
+	if (mWindow->fileRows.size() > 0 && mMode != Mode::CommandMode) fixRenderedCursorPosition(mWindow->fileRows.at(mWindow->fileCursorY));
 	setRenderedString();
 	setHighlight();
 }
@@ -97,8 +98,6 @@ void Console::setRenderedString()
 void Console::refreshScreen()
 {
 	const char* emptyRowCharacter = "~";
-
-	if (mWindow->fileRows.size() > 0 && mMode != Mode::CommandMode) fixRenderedCursorPosition(mWindow->fileRows.at(mWindow->fileCursorY));
 
 	std::string renderBuffer = "\x1b[H"; //Move the cursor to (0, 0)
 	renderBuffer.append("\x1b[?251"); //Hide the cursor
