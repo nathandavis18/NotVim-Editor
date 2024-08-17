@@ -23,7 +23,7 @@ SOFTWARE.
 */
 
 #include "Console.hpp"
-#include "../KeyActions/KeyActions.hh"
+#include "KeyActions/KeyActions.hh"
 
 #include <iostream>
 #include <fstream>
@@ -660,6 +660,11 @@ void Console::deleteRow(const size_t rowNum)
 	mWindow->dirty = true;
 }
 
+/// <summary>
+/// Allows for smooth movement of the cursor when moving up/down
+/// Compares the last value since the cursor was moved left/right (either by inserting/deleting character or moving left/right manually)
+/// Finds the closest position to the last saved value without going past it
+/// </summary>
 void Console::setCursorLinePosition()
 {
 	if (mWindow->renderedCursorX > mWindow->fileRows.at(mWindow->fileCursorY).renderedLine.length())

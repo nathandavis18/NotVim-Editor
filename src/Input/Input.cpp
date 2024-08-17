@@ -23,7 +23,7 @@ SOFTWARE.
 */
 
 #include "Input.hpp"
-#include "../Console/Console.hpp"
+#include "Console/Console.hpp"
 #include <iostream>
 
 #ifdef _WIN32

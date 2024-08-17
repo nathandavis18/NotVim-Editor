@@ -18,5 +18,6 @@ set (HEADERS
 )
 
 add_executable (nve ${SOURCES} ${HEADERS})
+target_include_directories(nve PRIVATE "src")
 
 set_property(TARGET nve PROPERTY CXX_STANDARD 20)
