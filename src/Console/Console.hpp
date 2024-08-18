@@ -86,7 +86,7 @@ private:
 	struct HighlightLocations
 	{
 		SyntaxHighlight::HighlightType colorType;
-		size_t row, col, length;
+		size_t startRow, startCol, endRow, endCol;
 	};
 
 	static void setRenderedString();
@@ -101,7 +101,7 @@ private:
 
 private:
 	inline static std::unique_ptr<Window> mWindow;
-	inline static std::vector<HighlightLocations> mHighlight;
+	inline static std::vector<HighlightLocations> mHighlights;
 	inline static Mode mMode = Mode::ReadMode;
 	inline static const std::string separators = " \"',.()+-/*=~%;:[]{}<>";
 };

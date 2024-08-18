@@ -126,6 +126,7 @@ void Console::refreshScreen()
 			}
 			else
 			{
+				renderBuffer.append("\x1b[0m"); //Make sure color mode is back to normal
 				renderBuffer.append(emptyRowCharacter);
 				renderBuffer.append("\x1b[0K\r\n"); //Clear the rest of the row
 			}
@@ -141,7 +142,6 @@ void Console::refreshScreen()
 			if (mWindow->colOffset < row.renderedLine.length())
 			{
 				row.renderedLine = row.renderedLine.substr(mWindow->colOffset, renderedLength);
-				renderBuffer.append("\x1b[39m");
 				updateRenderedColor(row.renderedLine, fileRow, mWindow->colOffset);
 				renderBuffer.append(row.renderedLine);
 			}
@@ -150,10 +150,10 @@ void Console::refreshScreen()
 				row.renderedLine.clear();
 			}
 		}
-		renderBuffer.append("\x1b[39m"); //Set default color
 		renderBuffer.append("\x1b[0K\r\n");
 	}
-
+	
+	renderBuffer.append("\x1b[0m"); //Make sure color mode is back to normal
 	renderBuffer.append("\x1b[7m"); //Set to inverse color mode (white background dark text) for status row
 
 	std::string status, rStatus, modeToDisplay;
@@ -791,30 +791,39 @@ size_t Console::getRenderedCursorTabSpaces(const FileHandler::Row& row)
 /// <param name="colOffset">The current colOffset to know if a certain highlight is off-screen or needs to be rendered</param>
 void Console::updateRenderedColor(std::string& renderString, const size_t row, const size_t colOffset)
 {
-	std::string normalColorMode = "\x1b[39m";
+	std::string normalColorMode = "\x1b[0m";
 	size_t charactersToAdjust = 0; //The amount of characters to adjust for in the string position based on how many color code escape sequences have been added
-	for (const auto& highlight : mHighlight)
+	for (const auto& highlight : mHighlights)
 	{
-		if (highlight.row < row) continue; //Cycle until on the correct row
-		if (highlight.row > row) return; //Too far, dont need to check any more
-		if (colOffset >= highlight.col + highlight.length || highlight.col >= mWindow->cols + colOffset) continue; //If the highlighted section is off-screen we don't need to display it
+		if (row != highlight.startRow && row != highlight.endRow) continue; //No point in doing anything if the row we are currently on doesn't have a highlight position
 
 		const uint8_t color = SyntaxHighlight::color(highlight.colorType);
 		std::string colorFormat = std::format("\x1b[38;5;{}m", std::to_string(color));
 
-
-		//If the beginning of keyword is at the start of the screen, or before the start of the screen, set the color at the beginning. Otherwise, set it at the location of the keyword
-		size_t insertBeginningPosition = (colOffset >= highlight.col) ? 0 : highlight.col + charactersToAdjust - colOffset;
-		renderString.insert(insertBeginningPosition, colorFormat);
-		charactersToAdjust += colorFormat.length();
-
-		size_t insertEndPosition = renderString.length();
-		if (insertEndPosition > highlight.col + charactersToAdjust + highlight.length - colOffset) //If the end of the keyword is before the end of the rendered string set it to that
+		if (row == highlight.startRow)
 		{
-			insertEndPosition = highlight.col + charactersToAdjust + highlight.length - colOffset;
+			size_t insertPos = highlight.startCol;
+
+			//Need to make sure the insert position is in within the rendered string
+			if (insertPos < colOffset) insertPos = 0;
+			else if (insertPos >= colOffset) insertPos -= colOffset;
+			if (insertPos >= mWindow->cols) insertPos = mWindow->cols;
+
+			renderString.insert(insertPos + charactersToAdjust, colorFormat);
+			charactersToAdjust += colorFormat.length();
 		}
-		renderString.insert(insertEndPosition, normalColorMode);
-		charactersToAdjust += normalColorMode.length();
+		if (row == highlight.endRow)
+		{
+			size_t insertPos = highlight.endCol;
+
+			//Need to make sure the insert position is in within the rendered string
+			if (insertPos < colOffset) insertPos = 0;
+			else if (insertPos >= colOffset) insertPos -= colOffset;
+			if (insertPos >= mWindow->cols) insertPos = mWindow->cols;
+
+			renderString.insert(insertPos + charactersToAdjust, normalColorMode);
+			charactersToAdjust += normalColorMode.length();
+		}
 	}
 }
 
@@ -830,38 +839,41 @@ void Console::updateRenderedColor(std::string& renderString, const size_t row, c
 /// <param name="hlType"></param>
 void Console::findEndMarker(std::string& currentWord, size_t& row, size_t& posOffset, size_t& findPos, const std::string& strToFind, const SyntaxHighlight::HighlightType hlType)
 {
+	size_t startRow = row;
 	posOffset += findPos;
+	size_t startCol = posOffset;
 	currentWord = currentWord.substr(findPos);
 	size_t endPos;
 	uint8_t offset = strToFind.length(); //Offsets by the opening marker length while on the same row as the opening marker. 
 	while ((endPos = currentWord.find(strToFind, offset)) == std::string::npos)
 	{
 		offset = 0; //If on a new row, no need to offset the check position
-		mHighlight.emplace_back(hlType, row, posOffset, currentWord.length());
 		findPos = 0;
 		posOffset = 0;
 		++row;
 		if (row >= mWindow->fileRows.size())
 		{
+			mHighlights.emplace_back(hlType, startRow, startCol, row - 1, mWindow->fileRows.at(row - 1).renderedLine.length());
 			currentWord.clear();
 			return;
 		}
 		currentWord = mWindow->fileRows.at(row).renderedLine;
 	}
-	mHighlight.emplace_back(hlType, row, posOffset, endPos + strToFind.length());
+	mHighlights.emplace_back(hlType, startRow, startCol, row, posOffset + endPos + strToFind.length());
 	currentWord = currentWord.substr(endPos + strToFind.length());
 	posOffset += endPos + strToFind.length();
 }
 
 /// <summary>
 /// Sets the highlight points of the rendered string if a syntax is given
+/// The stored format is (HighlightType, startRow, startCol, endRow, endCol)
 /// </summary>
 /// <param name="startingRowNum"></param>
 void Console::setHighlight()
 {
 	if (mWindow->syntax == nullptr) return; //Can't highlight if there is no syntax
 
-	mHighlight.clear(); //Could be optimized to only clear the current row, but I haven't seen a lack of performance, so this is fine for now
+	mHighlights.clear(); //Could be optimized to only clear the current row, but I haven't seen a lack of performance, so this is fine for now
 
 	for (size_t i = 0; i < mWindow->fileRows.size(); ++i)
 	{
@@ -882,7 +894,7 @@ void Console::setHighlight()
 
 			if (!wordToCheck.empty() && wordToCheck.find_first_not_of("0123456789") == std::string::npos)
 			{
-				mHighlight.emplace_back(SyntaxHighlight::HighlightType::Number, i, posOffset, wordToCheck.length());
+				mHighlights.emplace_back(SyntaxHighlight::HighlightType::Number, i, posOffset, i, posOffset + wordToCheck.length());
 			}
 			else if (!wordToCheck.empty())
 			{
@@ -890,7 +902,7 @@ void Console::setHighlight()
 				{
 					if (type == wordToCheck)
 					{
-						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordBuiltInType, i, posOffset, wordToCheck.length());
+						mHighlights.emplace_back(SyntaxHighlight::HighlightType::KeywordBuiltInType, i, posOffset, i, posOffset + wordToCheck.length());
 						goto commentcheck;
 					}
 				}
@@ -898,7 +910,7 @@ void Console::setHighlight()
 				{
 					if (control == wordToCheck)
 					{
-						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordControl, i, posOffset, wordToCheck.length());
+						mHighlights.emplace_back(SyntaxHighlight::HighlightType::KeywordControl, i, posOffset, i, posOffset + wordToCheck.length());
 						goto commentcheck;
 					}
 				}
@@ -906,7 +918,7 @@ void Console::setHighlight()
 				{
 					if (other == wordToCheck)
 					{
-						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordOther, i, posOffset, wordToCheck.length());
+						mHighlights.emplace_back(SyntaxHighlight::HighlightType::KeywordOther, i, posOffset, i, posOffset + wordToCheck.length());
 						goto commentcheck;
 					}
 				}
@@ -925,7 +937,7 @@ void Console::setHighlight()
 			else if (findPos + singlelineCommentLength - 1 < currentWord.length() //Singleline comments take the rest of the row
 				&& currentWord.substr(findPos, singlelineCommentLength) == mWindow->syntax->singlelineComment)
 			{
-				mHighlight.emplace_back(SyntaxHighlight::HighlightType::Comment, i, findPos + posOffset, row->renderedLine.length() - (findPos + posOffset));
+				mHighlights.emplace_back(SyntaxHighlight::HighlightType::Comment, i, findPos + posOffset, i, row->renderedLine.length());
 				goto nextrow;
 			}
 			else
@@ -939,7 +951,7 @@ void Console::setHighlight()
 		{
 			if (currentWord.find_first_not_of("0123456789") == std::string::npos)
 			{
-				mHighlight.emplace_back(SyntaxHighlight::HighlightType::Number, i, posOffset, currentWord.length());
+				mHighlights.emplace_back(SyntaxHighlight::HighlightType::Number, i, posOffset, i, posOffset + currentWord.length());
 				continue;
 			}
 			else
@@ -948,7 +960,7 @@ void Console::setHighlight()
 				{
 					if (type == currentWord)
 					{
-						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordBuiltInType, i, posOffset, currentWord.length());
+						mHighlights.emplace_back(SyntaxHighlight::HighlightType::KeywordBuiltInType, i, posOffset, i, posOffset + currentWord.length());
 						goto nextrow;
 					}
 				}
@@ -956,7 +968,7 @@ void Console::setHighlight()
 				{
 					if (control == currentWord)
 					{
-						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordControl, i, posOffset, currentWord.length());
+						mHighlights.emplace_back(SyntaxHighlight::HighlightType::KeywordControl, i, posOffset, i, posOffset + currentWord.length());
 						goto nextrow;
 					}
 				}
@@ -964,7 +976,7 @@ void Console::setHighlight()
 				{
 					if (other == currentWord)
 					{
-						mHighlight.emplace_back(SyntaxHighlight::HighlightType::KeywordOther, i, posOffset, currentWord.length());
+						mHighlights.emplace_back(SyntaxHighlight::HighlightType::KeywordOther, i, posOffset, i, posOffset + currentWord.length());
 						goto nextrow;
 					}
 				}
