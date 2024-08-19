@@ -1119,11 +1119,11 @@ void Console::initConsole(const std::string_view& fName)
 	signal(SIGWINCH, nullptr);
 #endif
 
-	//if (!(mWindow->rawModeEnabled = enableRawInput())) //Try to enable raw mode
-	//{
-	//	std::cerr << "Error enabling raw input mode";
-	//	exit(EXIT_FAILURE);
-	//}
+	if (!(mWindow->rawModeEnabled = enableRawInput())) //Try to enable raw mode
+	{
+		std::cerr << "Error enabling raw input mode";
+		exit(EXIT_FAILURE);
+	}
 
 	prepRenderedString();
 }
