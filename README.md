@@ -46,9 +46,12 @@ Controls are listed as follows:
 
 	CHARACTER EDITING:
 	- Letter/Number/Symbol: Insert at current cursor position and move cursor forward
+ 	- Tab: Insert a tab character, equivalent to cursor % 8 spaces. 
 	- Enter/Return: Insert a new row, moving contents beyond the cursor onto the new row and move cursor to start of new row
 	- Backspace/Delete: Delete character behind/in front of cursor. Move cursor backwards if using backspace.
 	- CtrlBackspace/Delete: Delete word
+ 	- Ctrl+Z: Undo most recent change.
+  	- Ctrl+Y: Redo most recent undo.
 
 More key functionality will be added as this project progresses.
 
