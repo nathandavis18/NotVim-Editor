@@ -491,6 +491,7 @@ void Console::deleteChar(const KeyActions::KeyAction key)
 	case KeyActions::KeyAction::Backspace:
 		if (mWindow->fileCursorX == 0 && mWindow->fileCursorY == 0) return;
 
+		mUndoHistory.emplace(mWindow->fileCursorY, mWindow->fileRows.at(mWindow->fileCursorY).line, mWindow->fileCursorX, mWindow->fileCursorY);
 		if (mWindow->fileCursorX == 0)
 		{
 			mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY - 1).line.length();
@@ -508,6 +509,7 @@ void Console::deleteChar(const KeyActions::KeyAction key)
 	case KeyActions::KeyAction::Delete:
 		if (mWindow->fileCursorY == mWindow->fileRows.size() - 1 && mWindow->fileCursorX == row.line.length()) return;
 
+		mUndoHistory.emplace(mWindow->fileCursorY, mWindow->fileRows.at(mWindow->fileCursorY).line, mWindow->fileCursorX, mWindow->fileCursorY);
 		if (mWindow->fileCursorX == row.line.length())
 		{
 			row.line.append(mWindow->fileRows.at(mWindow->fileCursorY + 1).line);
@@ -522,6 +524,7 @@ void Console::deleteChar(const KeyActions::KeyAction key)
 	case KeyActions::KeyAction::CtrlBackspace:
 		if (mWindow->fileCursorX == 0 && mWindow->fileCursorY == 0) return;
 
+		mUndoHistory.emplace(mWindow->fileCursorY, mWindow->fileRows.at(mWindow->fileCursorY).line, mWindow->fileCursorX, mWindow->fileCursorY);
 		if (mWindow->fileCursorX == 0)
 		{
 			mWindow->fileCursorX = mWindow->fileRows.at(mWindow->fileCursorY - 1).line.length();
@@ -552,6 +555,7 @@ void Console::deleteChar(const KeyActions::KeyAction key)
 	case KeyActions::KeyAction::CtrlDelete:
 		if (mWindow->fileCursorY == mWindow->fileRows.size() - 1 && mWindow->fileCursorX == row.line.length()) return;
 
+		mUndoHistory.emplace(mWindow->fileCursorY, mWindow->fileRows.at(mWindow->fileCursorY).line, mWindow->fileCursorX, mWindow->fileCursorY);
 		if (mWindow->fileCursorX == row.line.length())
 		{
 			row.line.append(mWindow->fileRows.at(mWindow->fileCursorY + 1).line);
@@ -587,10 +591,38 @@ void Console::insertChar(const unsigned char c)
 {
 	FileHandler::Row& row = mWindow->fileRows.at(mWindow->fileCursorY);
 
+	mUndoHistory.push(FileHistory(mWindow->fileCursorY, row.line, mWindow->fileCursorX, mWindow->fileCursorY));
+
 	row.line.insert(row.line.begin() + mWindow->fileCursorX, c);
 	++mWindow->fileCursorX;
 	mWindow->dirty = true;
 	mWindow->updateSavedPos = true;
+}
+
+void Console::undoChange()
+{
+	if (mUndoHistory.size() == 0) return;
+
+	mRedoHistory.push(FileHistory(mUndoHistory.top().row, mWindow->fileRows.at(mUndoHistory.top().row).line, mWindow->fileCursorX, mWindow->fileCursorY));
+
+	mWindow->fileRows.at(mUndoHistory.top().row).line = mUndoHistory.top().line;
+	mWindow->fileCursorX = mUndoHistory.top().fileCursorX;
+	mWindow->fileCursorY = mUndoHistory.top().fileCursorY;
+
+	mUndoHistory.pop();
+}
+
+void Console::redoChange()
+{
+	if (mRedoHistory.size() == 0) return;
+
+	mUndoHistory.push(FileHistory(mRedoHistory.top().row, mWindow->fileRows.at(mRedoHistory.top().row).line, mWindow->fileCursorX, mWindow->fileCursorY));
+
+	mWindow->fileRows.at(mRedoHistory.top().row).line = mRedoHistory.top().line;
+	mWindow->fileCursorX = mRedoHistory.top().fileCursorX;
+	mWindow->fileCursorY = mRedoHistory.top().fileCursorY;
+
+	mRedoHistory.pop();
 }
 
 bool Console::isRawMode()

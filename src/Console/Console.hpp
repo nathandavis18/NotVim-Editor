@@ -30,6 +30,7 @@ SOFTWARE.
 #include <vector>
 #include <string>
 #include <memory>
+#include <stack>
 
 enum class Mode
 {
@@ -52,6 +53,8 @@ public:
 	static void addRow();
 	static void deleteChar(const KeyActions::KeyAction key);
 	static void insertChar(const unsigned char c);
+	static void undoChange();
+	static void redoChange();
 	static bool isRawMode();
 	static bool isDirty();
 	static void save();
@@ -89,6 +92,13 @@ private:
 		size_t startRow, startCol, endRow, endCol;
 	};
 
+	struct FileHistory
+	{
+		size_t row;
+		std::string line;
+		size_t fileCursorX, fileCursorY;
+	};
+
 	static void setRenderedString();
 	static void deleteRow(const size_t rowNum);
 	static void setCursorLinePosition();
@@ -102,6 +112,8 @@ private:
 private:
 	inline static std::unique_ptr<Window> mWindow;
 	inline static std::vector<HighlightLocations> mHighlights;
+	inline static std::stack<FileHistory> mRedoHistory;
+	inline static std::stack<FileHistory> mUndoHistory;
 	inline static Mode mMode = Mode::ReadMode;
 	inline static const std::string separators = " \"',.()+-/*=~%;:[]{}<>";
 };

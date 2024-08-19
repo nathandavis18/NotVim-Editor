@@ -209,6 +209,12 @@ namespace InputHandler
 		case KeyAction::Enter:
 			Console::addRow();
 			break;
+		case KeyAction::CtrlZ:
+			Console::undoChange();
+			break;
+		case KeyAction::CtrlY:
+			Console::redoChange();
+			break;
 		default:
 			Console::insertChar(static_cast<uint8_t>(key));
 			break;
