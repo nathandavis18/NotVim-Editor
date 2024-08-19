@@ -25,6 +25,7 @@ SOFTWARE.
 #include "Input.hpp"
 #include "Console/Console.hpp"
 #include <iostream>
+#include <string>
 
 #ifdef _WIN32
 #include <conio.h>
@@ -138,6 +139,7 @@ namespace InputHandler
 			Console::clearScreen();
 			Console::enableRawInput();
 			break;
+
 		case KeyAction::ArrowDown:
 		case KeyAction::ArrowUp:
 		case KeyAction::ArrowLeft:
@@ -154,10 +156,12 @@ namespace InputHandler
 		case KeyAction::CtrlPageUp:
 			Console::moveCursor(key);
 			break;
+
 		case KeyAction::CtrlArrowDown:
 		case KeyAction::CtrlArrowUp:
 			Console::shiftRowOffset(key);
 			break;
+
 		default: //Unknown command. Just go back to read mode
 			Console::mode(Mode::ReadMode);
 			break;

@@ -24,7 +24,6 @@ SOFTWARE.
 
 #pragma once
 #include <vector>
-#include <array>
 #include <string>
 #include <cstdint> //uint8_t
 
@@ -39,9 +38,6 @@ namespace SyntaxHighlight{
 		std::string multilineCommentStart;
 		std::string multilineCommentEnd;
 	};
-	void addSyntax(const std::vector<std::string>& filetypes, const std::vector<std::string>& = std::vector<std::string>(),
-		const std::vector<std::string>&  = std::vector<std::string>(), const std::vector<std::string>& = std::vector<std::string>(),
-		const std::string & = std::string{}, const std::string & = std::string{}, const std::string & = std::string{});
 
 	EditorSyntax* syntax();
 

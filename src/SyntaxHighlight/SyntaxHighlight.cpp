@@ -23,11 +23,12 @@ SOFTWARE.
 */
 
 #include "SyntaxHighlight.hpp"
+#include <array>
 
 namespace SyntaxHighlight
 {
 	int8_t syntaxIndex = -1;
-	std::array<uint8_t, static_cast<int>(HighlightType::EnumCount)> colors;
+	std::array<uint8_t, static_cast<uint8_t>(HighlightType::EnumCount)> colors;
 	std::vector<EditorSyntax> syntaxContents;
 
 	/// <summary>
@@ -36,42 +37,14 @@ namespace SyntaxHighlight
 	/// </summary>
 	void setColors()
 	{
-		colors[static_cast<int>(HighlightType::Normal)] = 255; //White
-		colors[static_cast<int>(HighlightType::Comment)] = 40; //Light Green
-		colors[static_cast<int>(HighlightType::MultilineComment)] = 28; //Dark Green
-		colors[static_cast<int>(HighlightType::KeywordBuiltInType)] = 196; //Red
-		colors[static_cast<int>(HighlightType::KeywordControl)] = 177; //Pinkish Purple
-		colors[static_cast<int>(HighlightType::KeywordOther)] = 105; //Purple
-		colors[static_cast<int>(HighlightType::String)] = 215; //Orange
-		colors[static_cast<int>(HighlightType::Number)] = 6; //Blue
-	}
-
-
-	/// <summary>
-	/// Adds a highlight syntax to the syntaxContents vector
-	/// As of now, doesn't really serve a good purpose, but design changes later on may require/use this so it is staying for now
-	/// </summary>
-	/// <param name="filetypes"></param>
-	/// <param name="builtInTypeKeywords"></param>
-	/// <param name="loopKeywords"></param>
-	/// <param name="otherKeywords"></param>
-	/// <param name="singlelineComment"></param>
-	/// <param name="multilineCommentStart"></param>
-	/// <param name="multilineCommentEnd"></param>
-	void addSyntax(const std::vector<std::string>& filetypes, const std::vector<std::string>& builtInTypeKeywords,
-		const std::vector<std::string>& loopKeywords, const std::vector<std::string>& otherKeywords, const std::string& singlelineComment,
-		const std::string& multilineCommentStart, const std::string& multilineCommentEnd)
-	{
-		syntaxContents.emplace_back(filetypes, builtInTypeKeywords, loopKeywords, otherKeywords, singlelineComment, multilineCommentStart, multilineCommentEnd);
-	}
-
-	/// <summary>
-	/// Returns a pointer (or nullptr) to the current syntax being used.
-	/// </summary>
-	/// <returns> nullptr if no syntax, or a pointer to the correct syntax </returns>
-	EditorSyntax* syntax()
-	{
-		return syntaxIndex >= 0 ? &syntaxContents[syntaxIndex] : nullptr;
+		colors[static_cast<uint8_t>(HighlightType::Normal)] = 255; //White
+		colors[static_cast<uint8_t>(HighlightType::Comment)] = 40; //Light Green
+		colors[static_cast<uint8_t>(HighlightType::MultilineComment)] = 28; //Dark Green
+		colors[static_cast<uint8_t>(HighlightType::KeywordBuiltInType)] = 196; //Red
+		colors[static_cast<uint8_t>(HighlightType::KeywordControl)] = 177; //Pinkish Purple
+		colors[static_cast<uint8_t>(HighlightType::KeywordOther)] = 105; //Purple
+		colors[static_cast<uint8_t>(HighlightType::String)] = 215; //Orange
+		colors[static_cast<uint8_t>(HighlightType::Number)] = 6; //Blue
 	}
 
 	/// <summary>
@@ -80,7 +53,7 @@ namespace SyntaxHighlight
 	/// <param name="fName"></param>
 	void initSyntax(const std::string_view& fName)
 	{
-		addSyntax(cppFiletypes, cppBuiltInTypes, cppControlKeywords, cppOtherKeywords, "//", "/*", "*/");
+		syntaxContents.emplace_back(cppFiletypes, cppBuiltInTypes, cppControlKeywords, cppOtherKeywords, "//", "/*", "*/");
 
 		std::string extension;
 		size_t extensionIndex;
@@ -105,6 +78,15 @@ namespace SyntaxHighlight
 				}
 			}
 		}
+	}
+
+	/// <summary>
+	/// Returns a pointer (or nullptr) to the current syntax being used.
+	/// </summary>
+	/// <returns> nullptr if no syntax, or a pointer to the correct syntax </returns>
+	EditorSyntax* syntax()
+	{
+		return syntaxIndex >= 0 ? &syntaxContents[syntaxIndex] : nullptr;
 	}
 
 	/// <summary>

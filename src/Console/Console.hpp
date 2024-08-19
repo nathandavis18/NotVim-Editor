@@ -23,9 +23,9 @@ SOFTWARE.
 */
 
 #pragma once
-#include "../Input/Input.hpp"
-#include "../SyntaxHighlight/SyntaxHighlight.hpp"
-#include "../File/File.hpp"
+#include "SyntaxHighlight/SyntaxHighlight.hpp"
+#include "KeyActions/KeyActions.hh"
+#include "File/File.hpp"
 
 #include <vector>
 #include <string>
@@ -51,7 +51,7 @@ public:
 	static void shiftRowOffset(const KeyActions::KeyAction key);
 	static void addRow();
 	static void deleteChar(const KeyActions::KeyAction key);
-	static void insertChar(const uint8_t c);
+	static void insertChar(const unsigned char c);
 	static bool isRawMode();
 	static bool isDirty();
 	static void save();

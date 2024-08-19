@@ -23,7 +23,6 @@ SOFTWARE.
 */
 
 #include "Console.hpp"
-#include "KeyActions/KeyActions.hh"
 
 #include <iostream>
 #include <fstream>
@@ -584,7 +583,7 @@ void Console::deleteChar(const KeyActions::KeyAction key)
 /// Inserts a given character at the current position and moves the cursor forward
 /// </summary>
 /// <param name="c">The character to insert</param>
-void Console::insertChar(const uint8_t c)
+void Console::insertChar(const unsigned char c)
 {
 	FileHandler::Row& row = mWindow->fileRows.at(mWindow->fileCursorY);
 
