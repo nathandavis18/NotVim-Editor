@@ -141,14 +141,14 @@ void Console::refreshScreen()
 			if (mWindow->colOffset < row.renderedLine.length())
 			{
 				row.renderedLine = row.renderedLine.substr(mWindow->colOffset, renderedLength);
-				updateRenderedColor(row.renderedLine, fileRow, mWindow->colOffset);
-				renderBuffer.append(row.renderedLine);
 			}
 			else
 			{
 				row.renderedLine.clear();
 			}
 		}
+		updateRenderedColor(row.renderedLine, fileRow, mWindow->colOffset);
+		renderBuffer.append(row.renderedLine);
 		renderBuffer.append("\x1b[0K\r\n");
 	}
 	
@@ -456,6 +456,8 @@ void Console::shiftRowOffset(const KeyActions::KeyAction key)
 /// </summary>
 void Console::addRow()
 {
+	addUndoHistory();
+
 	FileHandler::Row& row = mWindow->fileRows.at(mWindow->fileCursorY);
 
 	if (mWindow->fileCursorX == row.line.length())
@@ -486,10 +488,15 @@ void Console::addRow()
 void Console::deleteChar(const KeyActions::KeyAction key)
 {
 	FileHandler::Row& row = mWindow->fileRows.at(mWindow->fileCursorY);
+	addUndoHistory();
 	switch (key)
 	{
 	case KeyActions::KeyAction::Backspace:
-		if (mWindow->fileCursorX == 0 && mWindow->fileCursorY == 0) return;
+		if (mWindow->fileCursorX == 0 && mWindow->fileCursorY == 0)
+		{
+			mUndoHistory.pop();
+			return;
+		}
 
 		if (mWindow->fileCursorX == 0)
 		{
@@ -506,7 +513,11 @@ void Console::deleteChar(const KeyActions::KeyAction key)
 		break;
 
 	case KeyActions::KeyAction::Delete:
-		if (mWindow->fileCursorY == mWindow->fileRows.size() - 1 && mWindow->fileCursorX == row.line.length()) return;
+		if (mWindow->fileCursorY == mWindow->fileRows.size() - 1 && mWindow->fileCursorX == row.line.length())
+		{
+			mUndoHistory.pop();
+			return;
+		}
 
 		if (mWindow->fileCursorX == row.line.length())
 		{
@@ -520,7 +531,11 @@ void Console::deleteChar(const KeyActions::KeyAction key)
 		break;
 
 	case KeyActions::KeyAction::CtrlBackspace:
-		if (mWindow->fileCursorX == 0 && mWindow->fileCursorY == 0) return;
+		if (mWindow->fileCursorX == 0 && mWindow->fileCursorY == 0)
+		{
+			mUndoHistory.pop();
+			return;
+		}
 
 		if (mWindow->fileCursorX == 0)
 		{
@@ -550,7 +565,11 @@ void Console::deleteChar(const KeyActions::KeyAction key)
 		break;
 
 	case KeyActions::KeyAction::CtrlDelete:
-		if (mWindow->fileCursorY == mWindow->fileRows.size() - 1 && mWindow->fileCursorX == row.line.length()) return;
+		if (mWindow->fileCursorY == mWindow->fileRows.size() - 1 && mWindow->fileCursorX == row.line.length())
+		{
+			mUndoHistory.pop();
+			return;
+		}
 
 		if (mWindow->fileCursorX == row.line.length())
 		{
@@ -587,10 +606,79 @@ void Console::insertChar(const unsigned char c)
 {
 	FileHandler::Row& row = mWindow->fileRows.at(mWindow->fileCursorY);
 
+	addUndoHistory();
+
 	row.line.insert(row.line.begin() + mWindow->fileCursorX, c);
 	++mWindow->fileCursorX;
 	mWindow->dirty = true;
 	mWindow->updateSavedPos = true;
+}
+
+/// <summary>
+/// Adds the last change made to the undo history
+/// Currently every change made gets added, but I am planning to have it on a timer so if a bunch of changes happen at once they will all be on the same history stack
+/// </summary>
+void Console::addUndoHistory()
+{
+	FileHistory history;
+	history.rows = mWindow->fileRows;
+	history.fileCursorX = mWindow->fileCursorX;
+	history.fileCursorY = mWindow->fileCursorY;
+	history.colOffset = mWindow->colOffset;
+	history.rowOffset = mWindow->rowOffset;
+
+	mUndoHistory.push(history);
+}
+
+/// <summary>
+/// Adds the last undo change to the redo history
+/// </summary>
+void Console::addRedoHistory()
+{
+	FileHistory history;
+	history.rows = mWindow->fileRows;
+	history.fileCursorX = mWindow->fileCursorX;
+	history.fileCursorY = mWindow->fileCursorY;
+	history.colOffset = mWindow->colOffset;
+	history.rowOffset = mWindow->rowOffset;
+
+	mRedoHistory.push(history);
+}
+
+/// <summary>
+/// Add the current changes to the redo stack to be able to be redone, then undo the last change.
+/// </summary>
+void Console::undoChange()
+{
+	if (mUndoHistory.size() == 0) return;
+
+	addRedoHistory();
+
+	mWindow->fileRows = mUndoHistory.top().rows;
+	mWindow->fileCursorX = mUndoHistory.top().fileCursorX;
+	mWindow->fileCursorY = mUndoHistory.top().fileCursorY;
+	mWindow->colOffset = mUndoHistory.top().colOffset;
+	mWindow->rowOffset = mUndoHistory.top().rowOffset;
+
+	mUndoHistory.pop();
+}
+
+/// <summary>
+/// Redo the last change that CTRL-Z undid and pop the redo change from the redoHistory stack.
+/// </summary>
+void Console::redoChange()
+{
+	if (mRedoHistory.size() == 0) return;
+
+	addUndoHistory();
+
+	mWindow->fileRows = mRedoHistory.top().rows;
+	mWindow->fileCursorX = mRedoHistory.top().fileCursorX;
+	mWindow->fileCursorY = mRedoHistory.top().fileCursorY;
+	mWindow->colOffset = mRedoHistory.top().colOffset;
+	mWindow->rowOffset = mRedoHistory.top().rowOffset;
+
+	mRedoHistory.pop();
 }
 
 bool Console::isRawMode()
@@ -630,8 +718,11 @@ void Console::save()
 /// </summary>
 void Console::enableCommandMode()
 {
+	disableRawInput();
 	mWindow->renderedCursorX = 0; mWindow->renderedCursorY = mWindow->rows + 2;
 	mMode = Mode::CommandMode;
+
+	prepRenderedString();
 	refreshScreen();
 }
 
@@ -794,11 +885,18 @@ void Console::updateRenderedColor(std::string& renderString, const size_t row, c
 	size_t charactersToAdjust = 0; //The amount of characters to adjust for in the string position based on how many color code escape sequences have been added
 	for (const auto& highlight : mHighlights)
 	{
-		if (row != highlight.startRow && row != highlight.endRow) continue; //No point in doing anything if the row we are currently on doesn't have a highlight position
-
 		const uint8_t color = SyntaxHighlight::color(highlight.colorType);
 		std::string colorFormat = std::format("\x1b[38;5;{}m", std::to_string(color));
-
+		if (row != highlight.startRow && row <= highlight.endRow)
+		{
+			if(highlight.endRow < mWindow->rowOffset || highlight.endRow < row) continue; //No point in doing anything if the row we are currently on doesn't have a highlight position
+			if (highlight.startRow < row && highlight.endRow >= row && row == mWindow->rowOffset)
+			{
+				renderString.insert(0, colorFormat);
+				charactersToAdjust += colorFormat.length();
+			}
+		}
+			
 		if (row == highlight.startRow)
 		{
 			size_t insertPos = highlight.startCol;
@@ -1021,11 +1119,11 @@ void Console::initConsole(const std::string_view& fName)
 	signal(SIGWINCH, nullptr);
 #endif
 
-	if (!(mWindow->rawModeEnabled = enableRawInput())) //Try to enable raw mode
-	{
-		std::cerr << "Error enabling raw input mode";
-		exit(EXIT_FAILURE);
-	}
+	//if (!(mWindow->rawModeEnabled = enableRawInput())) //Try to enable raw mode
+	//{
+	//	std::cerr << "Error enabling raw input mode";
+	//	exit(EXIT_FAILURE);
+	//}
 
 	prepRenderedString();
 }
