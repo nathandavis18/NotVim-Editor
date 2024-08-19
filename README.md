@@ -55,8 +55,6 @@ Controls are listed as follows:
 
 More key functionality will be added as this project progresses.
 
-I will also try to add Undo/Redo functionality, but that will be at a much later date, as this project is still in the very early stages of development.
-
 <hr>
 
 ### Building
@@ -97,7 +95,6 @@ This executable is a standalone executable, so you may also add this file to you
 
 ### Known Bugs
 
- - Cursor does not save rendered position, but rather position within the file, so cursor may appear to jump around when moving up/down
  - Screen randomly flickers (not sure why, but I am working on finding the culprit) -- May be fixed, needs more testing
 
 <hr>
