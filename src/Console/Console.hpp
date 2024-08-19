@@ -94,11 +94,13 @@ private:
 
 	struct FileHistory
 	{
-		size_t row;
-		std::string line;
+		std::vector<FileHandler::Row> rows;
 		size_t fileCursorX, fileCursorY;
+		size_t colOffset, rowOffset;
 	};
 
+	static void addUndoHistory();
+	static void addRedoHistory();
 	static void setRenderedString();
 	static void deleteRow(const size_t rowNum);
 	static void setCursorLinePosition();

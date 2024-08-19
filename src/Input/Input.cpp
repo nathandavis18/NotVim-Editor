@@ -106,7 +106,6 @@ namespace InputHandler
 			Console::enableEditMode();
 			break;
 		case static_cast<KeyAction>(':'):
-			Console::disableRawInput();
 			Console::enableCommandMode();
 			std::cout << ":";
 			std::cin >> command;
@@ -214,6 +213,8 @@ namespace InputHandler
 			break;
 		case KeyAction::CtrlY:
 			Console::redoChange();
+			break;
+		case KeyAction::CtrlC: //Don't need to do anything for this
 			break;
 		default:
 			Console::insertChar(static_cast<uint8_t>(key));
