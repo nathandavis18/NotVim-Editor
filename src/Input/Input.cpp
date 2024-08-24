@@ -135,7 +135,6 @@ namespace InputHandler
 				break;
 			}
 			Console::mode(Mode::ReadMode); //Go back to read mode after executing a command
-			Console::clearScreen();
 			Console::enableRawInput();
 			break;
 

@@ -66,7 +66,6 @@ public:
 	static bool setWindowSize();
 	static bool enableRawInput();
 	static void disableRawInput();
-	static void clearScreen();
 
 private:
 	struct Window

@@ -36,7 +36,6 @@ void updateScreen() //Makes sure the screen stays up to date with the size
 	{
 		if (Console::setWindowSize()) //Only update if the terminal screen actually got updated
 		{
-			Console::clearScreen(); //Start fresh if updating
 			Console::refreshScreen();
 		}
 	}

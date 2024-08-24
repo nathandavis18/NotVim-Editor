@@ -75,14 +75,13 @@ void Console::prepRenderedString()
 /// </summary>
 void Console::setRenderedString()
 {
-	for (size_t r = 0; r < mWindow->rows && r < mWindow->fileRows.size(); ++r)
+	for (size_t r = 0; r < mWindow->fileRows.size(); ++r)
 	{
-		size_t fileRow = mWindow->rowOffset + r;
-		if (fileRow >= mWindow->fileRows.size()) return;
+		if (r > mWindow->rowOffset + mWindow->rows) return;
 
-		FileHandler::Row& row = mWindow->fileRows.at(fileRow);
+		FileHandler::Row& row = mWindow->fileRows.at(r);
 		row.renderedLine = row.line;
-		if (row.renderedLine.length() > 0)
+		if (row.renderedLine.length() > 0 && (r >= mWindow->rowOffset && r <= mWindow->rowOffset + mWindow->rows))
 		{
 			replaceRenderedStringTabs(row.renderedLine);
 		}
@@ -98,9 +97,8 @@ void Console::refreshScreen()
 {
 	const char* emptyRowCharacter = "~";
 
-	std::string renderBuffer = "\x1b[H"; //Move the cursor to (0, 0)
-	renderBuffer.append("\x1b[?251"); //Hide the cursor
-	renderBuffer.append("\x1b[J"); //Erase the screen to redraw changes
+	std::string renderBuffer = "\x1b[1;1H"; //Move the cursor to (0, 0)
+	renderBuffer.append("\x1b[3J"); //Erase the screen to redraw changes
 
 	for (size_t y = 0; y < mWindow->rows; ++y) //For each row within the displayable range
 	{
@@ -206,9 +204,8 @@ void Console::refreshScreen()
 
 	renderBuffer.append("\x1b[0m\r\n"); //Set to default mode
 
-	std::string cursorPosition = std::format("\x1b[{};{}f", mWindow->renderedCursorY + 1, mWindow->renderedCursorX + 1); //Move the cursor to this position
+	std::string cursorPosition = std::format("\x1b[{};{}H", mWindow->renderedCursorY + 1, mWindow->renderedCursorX + 1); //Move the cursor to this position
 	renderBuffer.append(cursorPosition);
-	renderBuffer.append("\x1b[?25h"); //Show cursor
 	std::cout << renderBuffer;
 	std::cout.flush(); //Finally, flush the buffer so everything displays properly
 }
@@ -1024,6 +1021,10 @@ void Console::setHighlight()
 		commentcheck: //Skip the remaining for-loop checks
 			if (currentWord[findPos] == '"' || currentWord[findPos] == '\'') //String highlights are open until the next string marker of the same type is found
 			{
+				if (findPos > 0)
+				{
+					if (currentWord[findPos - 1] == '\\') goto nextword;
+				}
 				findEndMarker(currentWord, i, posOffset, findPos, std::string() + currentWord[findPos], SyntaxHighlight::HighlightType::String);
 			}
 			else if (findPos + multilineCommentLength - 1 < currentWord.length() //Multiline comments stay open until the closing marker is found
@@ -1039,6 +1040,7 @@ void Console::setHighlight()
 			}
 			else
 			{
+			nextword:
 				posOffset += findPos + 1;
 				currentWord = currentWord.substr(findPos + 1);
 				continue;
@@ -1236,17 +1238,4 @@ void Console::disableRawInput()
 	tcsetattr(STDOUT_FILENO, TCSAFLUSH, &defaultMode);
 #endif
 	mWindow->rawModeEnabled = false;
-}
-
-/// <summary>
-/// Clears the screen after a command is used
-/// Return value of the system call should be ignored since it should never fail
-/// </summary>
-void Console::clearScreen()
-{
-#ifdef _WIN32
-	int _ = system("cls");
-#elif defined(__linux__) || defined(__APPLE__)
-	int _ = system("clear");
-#endif
 }
