@@ -106,8 +106,8 @@ private:
 	static void fixRenderedCursorPosition(const FileHandler::Row&);
 	static void replaceRenderedStringTabs(std::string&);
 	static size_t getRenderedCursorTabSpaces(const FileHandler::Row&);
-	static void updateRenderedColor(std::string&, const size_t row, const size_t colOffset);
-	static void findEndMarker(std::string& currentWord, size_t& row, size_t& posOffset, size_t& findPos, const std::string& strToFind, const SyntaxHighlight::HighlightType);
+	static void updateRenderedColor(const size_t rowOffset, const size_t colOffset);
+	static void findEndMarker(std::string& currentWord, size_t& row, size_t& posOffset, size_t& findPos, size_t startRow, size_t startCol, const std::string& strToFind, const SyntaxHighlight::HighlightType, bool = false);
 	static void setHighlight();
 
 private:

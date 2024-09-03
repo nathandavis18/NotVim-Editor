@@ -53,7 +53,7 @@ namespace SyntaxHighlight
 	/// <param name="fName"></param>
 	void initSyntax(const std::string_view& fName)
 	{
-		syntaxContents.emplace_back(cppFiletypes, cppBuiltInTypes, cppControlKeywords, cppOtherKeywords, "//", "/*", "*/");
+		syntaxContents.emplace_back(cppFiletypes, cppBuiltInTypes, cppControlKeywords, cppOtherKeywords, "//", "/*", "*/", '\\');
 
 		std::string extension;
 		size_t extensionIndex;

@@ -145,11 +145,19 @@ void Console::refreshScreen()
 				row.renderedLine.clear();
 			}
 		}
-		updateRenderedColor(row.renderedLine, fileRow, mWindow->colOffset);
-		renderBuffer.append(row.renderedLine);
-		renderBuffer.append("\x1b[0K\r\n");
+		else
+		{
+			row.renderedLine.clear();
+		}
 	}
 	
+	updateRenderedColor(mWindow->rowOffset, mWindow->colOffset);
+	for (size_t i = mWindow->rowOffset; i < mWindow->fileRows.size() && i < mWindow->rowOffset + mWindow->rows; ++i)
+	{
+		renderBuffer.append(mWindow->fileRows.at(i).renderedLine);
+		renderBuffer.append("\x1b[0K\r\n");
+	}
+
 	renderBuffer.append("\x1b[0m"); //Make sure color mode is back to normal
 	renderBuffer.append("\x1b[7m"); //Set to inverse color mode (white background dark text) for status row
 
@@ -876,48 +884,51 @@ size_t Console::getRenderedCursorTabSpaces(const FileHandler::Row& row)
 /// <param name="renderString">The string being prepped for render</param>
 /// <param name="row">The current row number</param>
 /// <param name="colOffset">The current colOffset to know if a certain highlight is off-screen or needs to be rendered</param>
-void Console::updateRenderedColor(std::string& renderString, const size_t row, const size_t colOffset)
+void Console::updateRenderedColor(const size_t rowOffset, const size_t colOffset)
 {
 	std::string normalColorMode = "\x1b[0m";
 	size_t charactersToAdjust = 0; //The amount of characters to adjust for in the string position based on how many color code escape sequences have been added
+	size_t prevRow = 0;
 	for (const auto& highlight : mHighlights)
 	{
+		if (highlight.startRow == highlight.endRow && (highlight.endCol < colOffset || highlight.startCol > colOffset + mWindow->cols)) continue;
+		if (highlight.startRow > mWindow->rowOffset + mWindow->rows) return;
+
+		std::string* renderString = &mWindow->fileRows.at(highlight.startRow).renderedLine;
+		if (prevRow != highlight.startRow) charactersToAdjust = 0;
+
 		const uint8_t color = SyntaxHighlight::color(highlight.colorType);
 		std::string colorFormat = std::format("\x1b[38;5;{}m", std::to_string(color));
-		if (row != highlight.startRow && row <= highlight.endRow)
+		if (rowOffset > highlight.startRow)
 		{
-			if(highlight.endRow < mWindow->rowOffset || highlight.endRow < row) continue; //No point in doing anything if the row we are currently on doesn't have a highlight position
-			if (highlight.startRow < row && highlight.endRow >= row && row == mWindow->rowOffset)
-			{
-				renderString.insert(0, colorFormat);
-				charactersToAdjust += colorFormat.length();
-			}
+			renderString = &mWindow->fileRows.at(rowOffset).renderedLine;
+			renderString->insert(0, colorFormat);
+			charactersToAdjust += colorFormat.length();
+			prevRow = rowOffset;
 		}
-			
-		if (row == highlight.startRow)
+		else
 		{
 			size_t insertPos = highlight.startCol;
-
 			//Need to make sure the insert position is in within the rendered string
 			if (insertPos < colOffset) insertPos = 0;
 			else if (insertPos >= colOffset) insertPos -= colOffset;
 			if (insertPos >= mWindow->cols) insertPos = mWindow->cols;
 
-			renderString.insert(insertPos + charactersToAdjust, colorFormat);
+			renderString->insert(insertPos + charactersToAdjust, colorFormat);
 			charactersToAdjust += colorFormat.length();
+			prevRow = highlight.startRow;
 		}
-		if (row == highlight.endRow)
-		{
-			size_t insertPos = highlight.endCol;
 
-			//Need to make sure the insert position is in within the rendered string
-			if (insertPos < colOffset) insertPos = 0;
-			else if (insertPos >= colOffset) insertPos -= colOffset;
-			if (insertPos >= mWindow->cols) insertPos = mWindow->cols;
+		size_t insertPos = highlight.endCol;
+		if (insertPos >= colOffset) insertPos -= colOffset;
+		if (insertPos >= mWindow->cols) insertPos = mWindow->cols;
+		renderString = &mWindow->fileRows.at(highlight.endRow).renderedLine;
 
-			renderString.insert(insertPos + charactersToAdjust, normalColorMode);
-			charactersToAdjust += normalColorMode.length();
-		}
+		if (prevRow != highlight.endRow) charactersToAdjust = 0;
+		renderString->insert(insertPos + charactersToAdjust, normalColorMode);
+		charactersToAdjust += normalColorMode.length();
+
+		prevRow = highlight.endRow;
 	}
 }
 
@@ -931,12 +942,8 @@ void Console::updateRenderedColor(std::string& renderString, const size_t row, c
 /// <param name="findPos"></param>
 /// <param name="strToFind"></param>
 /// <param name="hlType"></param>
-void Console::findEndMarker(std::string& currentWord, size_t& row, size_t& posOffset, size_t& findPos, const std::string& strToFind, const SyntaxHighlight::HighlightType hlType)
+void Console::findEndMarker(std::string& currentWord, size_t& row, size_t& posOffset, size_t& findPos, size_t startRow, size_t startCol, const std::string& strToFind, const SyntaxHighlight::HighlightType hlType, bool addHighlight)
 {
-	size_t startRow = row;
-	posOffset += findPos;
-	size_t startCol = posOffset;
-	currentWord = currentWord.substr(findPos);
 	size_t endPos;
 	uint8_t offset = strToFind.length(); //Offsets by the opening marker length while on the same row as the opening marker. 
 	while ((endPos = currentWord.find(strToFind, offset)) == std::string::npos)
@@ -953,29 +960,74 @@ void Console::findEndMarker(std::string& currentWord, size_t& row, size_t& posOf
 		}
 		currentWord = mWindow->fileRows.at(row).renderedLine;
 	}
-	mHighlights.emplace_back(hlType, startRow, startCol, row, posOffset + endPos + strToFind.length());
-	currentWord = currentWord.substr(endPos + strToFind.length());
-	posOffset += endPos + strToFind.length();
+	if (endPos > 0)
+	{
+		if (currentWord[endPos - 1] == mWindow->syntax->escapeChar && !(endPos > 1 && currentWord.substr(endPos - 2, 2) == (std::string() + mWindow->syntax->escapeChar + mWindow->syntax->escapeChar)))
+		{
+			currentWord = currentWord.substr(endPos);
+			posOffset += endPos;
+			findEndMarker(currentWord, row, posOffset, findPos, startRow, startCol, strToFind, hlType);
+		}
+		else
+		{
+			addHighlight = true;
+		}
+	}
+	else
+	{
+		addHighlight = true;
+	}
+
+	if (addHighlight)
+	{
+		mHighlights.emplace_back(hlType, startRow, startCol, row, posOffset + endPos + strToFind.length());
+		currentWord = currentWord.substr(endPos + strToFind.length());
+		posOffset += endPos + strToFind.length();
+	}
 }
 
 /// <summary>
 /// Sets the highlight points of the rendered string if a syntax is given
 /// The stored format is (HighlightType, startRow, startCol, endRow, endCol)
+/// Needs to be optimized.
 /// </summary>
-/// <param name="startingRowNum"></param>
 void Console::setHighlight()
 {
 	if (mWindow->syntax == nullptr) return; //Can't highlight if there is no syntax
 
-	mHighlights.clear(); //Could be optimized to only clear the current row, but I haven't seen a lack of performance, so this is fine for now
+	for (int64_t i = 0; i < mHighlights.size(); ++i)
+	{
+		if (mHighlights[i].startRow >= mWindow->fileCursorY)
+		{
+			mHighlights.erase(mHighlights.begin() + i, mHighlights.end());
+			break;
+		}
+		if (mHighlights[i].endRow < mWindow->rowOffset)
+		{
+			mHighlights.erase(mHighlights.begin() + i);
+			--i;
+		}
+	}
+	size_t i = mWindow->fileCursorY;
+	size_t startOffset = 0;
+	for (const auto& highlight : mHighlights)
+	{
+		if (i >= highlight.startRow && i <= highlight.endRow)
+		{
+			i = highlight.endRow;
+			startOffset = highlight.endCol;
+			break;
+		}
+	}
 
-	for (size_t i = 0; i < mWindow->fileRows.size(); ++i)
+	for (; i < mWindow->fileRows.size(); ++i)
 	{
 		if (i > mWindow->rowOffset + mWindow->rows) return;
 
 		FileHandler::Row* row = &mWindow->fileRows.at(i); //The starting row
 
-		std::string currentWord = row->renderedLine;
+		std::string currentWord = row->renderedLine.substr(startOffset);
+		startOffset = 0;
 		size_t findPos, posOffset = 0; //posOffset keeps track of how far into the string we are, since findPos depends on currentWord, which progressively gets smaller
 		const uint8_t singlelineCommentLength = mWindow->syntax->singlelineComment.length();
 		const uint8_t multilineCommentLength = mWindow->syntax->multilineCommentStart.length();
@@ -1021,16 +1073,20 @@ void Console::setHighlight()
 		commentcheck: //Skip the remaining for-loop checks
 			if (currentWord[findPos] == '"' || currentWord[findPos] == '\'') //String highlights are open until the next string marker of the same type is found
 			{
-				if (findPos > 0)
-				{
-					if (currentWord[findPos - 1] == '\\') goto nextword;
-				}
-				findEndMarker(currentWord, i, posOffset, findPos, std::string() + currentWord[findPos], SyntaxHighlight::HighlightType::String);
+				posOffset += findPos;
+				size_t startCol = posOffset;
+				size_t startRow = i;
+				currentWord = currentWord.substr(findPos);
+				findEndMarker(currentWord, i, posOffset, findPos, startRow, startCol, std::string() + currentWord[findPos], SyntaxHighlight::HighlightType::String);
 			}
 			else if (findPos + multilineCommentLength - 1 < currentWord.length() //Multiline comments stay open until the closing marker is found
 				&& currentWord.substr(findPos, multilineCommentLength) == mWindow->syntax->multilineCommentStart)
 			{
-				findEndMarker(currentWord, i, posOffset, findPos, mWindow->syntax->multilineCommentEnd, SyntaxHighlight::HighlightType::MultilineComment);
+				posOffset += findPos;
+				size_t startCol = posOffset;
+				size_t startRow = i;
+				currentWord = currentWord.substr(findPos);
+				findEndMarker(currentWord, i, posOffset, findPos, startRow, startCol, mWindow->syntax->multilineCommentEnd, SyntaxHighlight::HighlightType::MultilineComment);
 			}
 			else if (findPos + singlelineCommentLength - 1 < currentWord.length() //Singleline comments take the rest of the row
 				&& currentWord.substr(findPos, singlelineCommentLength) == mWindow->syntax->singlelineComment)

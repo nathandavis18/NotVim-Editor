@@ -37,6 +37,7 @@ namespace SyntaxHighlight{
 		std::string singlelineComment;
 		std::string multilineCommentStart;
 		std::string multilineCommentEnd;
+		char escapeChar;
 	};
 
 	EditorSyntax* syntax();
@@ -79,6 +80,6 @@ namespace SyntaxHighlight{
 	};
 	static const std::vector<std::string> cppOtherKeywords{
 		//Some other keywords, such as macro definitions
-		"#define", "#ifdef", "#ifndef", "#if", "defined", "#include"
+		"#define", "#ifdef", "#ifndef", "#if", "defined", "#include", "#elif", "#endif"
 	}; 
 }
