@@ -27,6 +27,7 @@ SOFTWARE.
 #include <iostream>
 #include <fstream>
 #include <format> //C++20 is required. MSVC/GCC-13/Clang-14/17/AppleClang-15
+#include <algorithm>
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -686,6 +687,21 @@ void Console::redoChange()
 	mRedoHistory.pop();
 }
 
+void Console::findWord(const std::string_view& strToFind)
+{
+	for (size_t i = 0; i < mWindow->fileRows.size(); ++i)
+	{
+		std::string line = mWindow->fileRows.at(i).line;
+		std::transform(line.begin(), line.end(), line.begin(), [](unsigned char c) { return std::tolower(c); }); //case-insensitive search
+		size_t findPos;
+		while ((findPos = line.find(strToFind)) != std::string::npos)
+		{
+			mFindLocations.emplace_back(i, findPos);
+			line = line.substr(findPos + strToFind.length());
+		}
+	}
+}
+
 bool Console::isRawMode()
 {
 	return mWindow->rawModeEnabled;
@@ -876,6 +892,23 @@ size_t Console::getRenderedCursorTabSpaces(const FileHandler::Row& row)
 		spacesToAdd += 7 - ((i + spacesToAdd) % 8); //Tabs are replaced with up to 8 spaces, depending on how close to a multiple of 8 the tab is
 	}
 	return spacesToAdd;
+}
+
+void Console::setFindWordBackground(const size_t rowOffset, const size_t colOffset, size_t wordLength)
+{
+	const std::string defaultBackground = "\x1b[48;5;0m";
+	const std::string highlightBackground = "\x1b[48;5;14m";
+	size_t charactersToAdjust = 0;
+	size_t prevRow = 0;
+	for (const auto& findLocation : mFindLocations)
+	{
+		if (findLocation.row < rowOffset) continue;
+		if (findLocation.row >= rowOffset + mWindow->rows) return;
+		if (findLocation.col + wordLength < colOffset || findLocation.col >= colOffset + mWindow->cols) continue;
+
+		if (prevRow != findLocation.row) charactersToAdjust = 0;
+		prevRow = findLocation.row;
+	}
 }
 
 /// <summary>

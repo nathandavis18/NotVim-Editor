@@ -98,7 +98,7 @@ namespace InputHandler
 	/// </summary>
 	void doCommand(const KeyAction key)
 	{
-		std::string command;
+		std::string input;
 		switch (key)
 		{
 		case static_cast<KeyAction>('i'):
@@ -108,27 +108,27 @@ namespace InputHandler
 		case static_cast<KeyAction>(':'):
 			Console::enableCommandMode();
 			std::cout << ":";
-			std::cin >> command;
+			std::cin >> input;
 
-			if (command == "q" && Console::isDirty()) //Quit command - requires changes to be saved
+			if (input == "q" && Console::isDirty()) //Quit command - requires changes to be saved
 			{
 				break;
 			}
-			else if (command == "q")
-			{
-				Console::mode(Mode::ExitMode);
-				break;
-			}
-			else if (command == "q!") //Force quit. Don't bother checking anything
+			else if (input == "q")
 			{
 				Console::mode(Mode::ExitMode);
 				break;
 			}
-			else if (command == "w" || command == "s") //Save commands ([w]rite / [s]ave)
+			else if (input == "q!") //Force quit. Don't bother checking anything
+			{
+				Console::mode(Mode::ExitMode);
+				break;
+			}
+			else if (input == "w" || input == "s") //Save commands ([w]rite / [s]ave)
 			{
 				Console::save();
 			}
-			else if (command == "wq" || command == "sq") //Save and quit commands ([w]rite [q]uit / [s]ave [q]uit)
+			else if (input == "wq" || input == "sq") //Save and quit commands ([w]rite [q]uit / [s]ave [q]uit)
 			{
 				Console::save();
 				Console::mode(Mode::ExitMode);
@@ -136,6 +136,16 @@ namespace InputHandler
 			}
 			Console::mode(Mode::ReadMode); //Go back to read mode after executing a command
 			Console::enableRawInput();
+			break;
+		case static_cast<KeyAction>('f'):
+			Console::enableCommandMode();
+			std::cout << "Word to find: ";
+			std::cin >> input;
+
+			if (input.length() > 0)
+			{
+				Console::findWord(input);
+			}
 			break;
 
 		case KeyAction::ArrowDown:

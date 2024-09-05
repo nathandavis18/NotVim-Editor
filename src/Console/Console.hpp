@@ -55,6 +55,7 @@ public:
 	static void insertChar(const unsigned char c);
 	static void undoChange();
 	static void redoChange();
+	static void findWord(const std::string_view& strToFind);
 	static bool isRawMode();
 	static bool isDirty();
 	static void save();
@@ -91,6 +92,11 @@ private:
 		size_t startRow, startCol, endRow, endCol;
 	};
 
+	struct FindLocations
+	{
+		size_t row, col;
+	};
+
 	struct FileHistory
 	{
 		std::vector<FileHandler::Row> rows;
@@ -106,6 +112,7 @@ private:
 	static void fixRenderedCursorPosition(const FileHandler::Row&);
 	static void replaceRenderedStringTabs(std::string&);
 	static size_t getRenderedCursorTabSpaces(const FileHandler::Row&);
+	static void setFindWordBackground(const size_t rowOffset, const size_t colOffset, size_t wordLength);
 	static void updateRenderedColor(const size_t rowOffset, const size_t colOffset);
 	static void findEndMarker(std::string& currentWord, size_t& row, size_t& posOffset, size_t& findPos, size_t startRow, size_t startCol, const std::string& strToFind, const SyntaxHighlight::HighlightType, bool = false);
 	static void setHighlight();
@@ -113,6 +120,7 @@ private:
 private:
 	inline static std::unique_ptr<Window> mWindow;
 	inline static std::vector<HighlightLocations> mHighlights;
+	inline static std::vector<FindLocations> mFindLocations;
 	inline static std::stack<FileHistory> mRedoHistory;
 	inline static std::stack<FileHistory> mUndoHistory;
 	inline static Mode mMode = Mode::ReadMode;
