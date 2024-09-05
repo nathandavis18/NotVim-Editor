@@ -95,6 +95,8 @@ This executable is a standalone executable, so you may also add this file to you
 
 ### Known Bugs
 
+Check the issues page to see all known bugs
+
 <hr>
 
 ### Contributing
