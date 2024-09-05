@@ -95,8 +95,6 @@ This executable is a standalone executable, so you may also add this file to you
 
 ### Known Bugs
 
- - Screen randomly flickers (not sure why, but I am working on finding the culprit) -- May be fixed, needs more testing
-
 <hr>
 
 ### Contributing
