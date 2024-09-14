@@ -72,12 +72,12 @@ int main(int argc, const char** argv)
 		}
 		while (Console::mode() == Mode::EditMode)
 		{
+			Console::prepRenderedString();
 			Console::refreshScreen();
 			const KeyActions::KeyAction inputCode = InputHandler::getInput();
 			if (inputCode != KeyActions::KeyAction::None)
 			{
 				InputHandler::handleInput(inputCode);
-				Console::prepRenderedString();
 			}
 		}
 		if (Console::mode() == Mode::ExitMode)

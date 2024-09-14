@@ -95,42 +95,12 @@ void Console::setRenderedString()
 /// <param name="mode"></param>
 void Console::refreshScreen()
 {
-	const char* emptyRowCharacter = "~";
-
 	std::string renderBuffer = "\x1b[1;1H"; //Move the cursor to (0, 0)
 	renderBuffer.append("\x1b[3J"); //Erase the screen to redraw changes
 
-	for (size_t y = 0; y < mWindow->rows; ++y) //For each row within the displayable range
+	for (size_t y = mWindow->rowOffset; y < mWindow->fileRows.size() && y < mWindow->rows + mWindow->rowOffset; ++y)
 	{
-		size_t fileRow = mWindow->rowOffset + y; //The current row within the displayed rows
-		if (fileRow >= mWindow->fileRows.size())
-		{
-			if (mWindow->fileRows.size() == 0 && y == mWindow->rows / 3) //If the file is empty and the current row is at 1/3 height (good display position)
-			{
-				std::string welcome = std::format("NotVim Editor -- version {}\x1b[0K\r\n", NotVimVersion);
-				size_t padding = (mWindow->cols - welcome.length()) / 2;
-				if (padding > 0)
-				{
-					renderBuffer.append(emptyRowCharacter);
-					--padding;
-				}
-				while (padding > 0)
-				{
-					renderBuffer.append(" ");
-					--padding;
-				}
-				renderBuffer.append(welcome);
-			}
-			else
-			{
-				renderBuffer.append("\x1b[0m"); //Make sure color mode is back to normal
-				renderBuffer.append(emptyRowCharacter);
-				renderBuffer.append("\x1b[0K\r\n"); //Clear the rest of the row
-			}
-			continue;
-		}
-
-		FileHandler::Row& row = mWindow->fileRows.at(fileRow);
+		FileHandler::Row& row = mWindow->fileRows.at(y);
 
 		//Set the render string length to the lesser of the terminal width and the line length.
 		const size_t renderedLength = (row.renderedLine.length() - mWindow->colOffset) > mWindow->cols ? mWindow->cols : row.renderedLine.length();
@@ -150,7 +120,6 @@ void Console::refreshScreen()
 			row.renderedLine.clear();
 		}
 	}
-	
 	updateRenderedColor(mWindow->rowOffset, mWindow->colOffset);
 	for (size_t i = mWindow->rowOffset; i < mWindow->fileRows.size() && i < mWindow->rowOffset + mWindow->rows; ++i)
 	{
@@ -159,6 +128,41 @@ void Console::refreshScreen()
 	}
 
 	renderBuffer.append("\x1b[0m"); //Make sure color mode is back to normal
+	const char* emptyRowCharacter = "~";
+
+	if (mWindow->rowOffset + mWindow->rows >= mWindow->fileRows.size())
+	{
+		for (size_t y = mWindow->rowOffset; y < mWindow->rows + mWindow->rowOffset; ++y)
+		{
+			if (y >= mWindow->fileRows.size())
+			{
+				if (mWindow->fileRows.size() == 0 && y == mWindow->rows / 3) //If the file is empty and the current row is at 1/3 height (good display position)
+				{
+					std::string welcome = std::format("NotVim Editor -- version {}\x1b[0K\r\n", NotVimVersion);
+					size_t padding = (mWindow->cols - welcome.length()) / 2;
+					if (padding > 0)
+					{
+						renderBuffer.append(emptyRowCharacter);
+						--padding;
+					}
+					while (padding > 0)
+					{
+						renderBuffer.append(" ");
+						--padding;
+					}
+					renderBuffer.append(welcome);
+				}
+				else
+				{
+					renderBuffer.append("\x1b[0m"); //Make sure color mode is back to normal
+					renderBuffer.append(emptyRowCharacter);
+					renderBuffer.append("\x1b[0K\r\n"); //Clear the rest of the row
+				}
+				continue;
+			}
+		}
+	}
+
 	renderBuffer.append("\x1b[7m"); //Set to inverse color mode (white background dark text) for status row
 
 	std::string status, rStatus, modeToDisplay;
